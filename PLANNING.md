@@ -70,20 +70,28 @@ To balance powerful AI processing with KiCad's desktop nature, we will use a **L
 ## 3. Standards & Development Rules
 See [AI_RULES.md](docs/AI_RULES.md) for the complete list of coding standards, architectural guidelines, and documentation mandates.
 
-## 4. Training & Context (RAG vs. Fine-Tuning)
-We will NOT train (fine-tune) a model initially. We will use **RAG (Retrieval-Augmented Generation)**.
+## 4. AI Strategy: "The Librarian & The Engineer"
 
-*   **The Problem:** LLMs don't memorize every datasheet or KiCad file format quirk.
-*   **The Solution:**
-    1.  **Library of Knowledge:** We will maintain a `vector database` (or simple JSON store initially) of:
-        *   Standard schematic patterns (Buck converters, LDOs, MCU decoupling).
-        *   `kicad-sch-api` code examples.
-    2.  **Workflow:**
-        *   User asks: "Design a 3.3V LDO circuit."
-        *   System retrieves: A proven LDO schematic pattern + Datasheet data for a specific part (e.g., AMS1117).
-        *   LLM generates: The Python code to build that specific circuit.
+We will **NOT** train or fine-tune a custom model. Electronics design requires high precision and up-to-date component data, which static models struggle with. Instead, we use a **RAG (Retrieval-Augmented Generation) + Tool Use** approach.
+
+### Why No Fine-Tuning?
+1.  **Velocity of Data:** New components are released daily. A trained model is frozen in time.
+2.  **Precision > Probability:** Electronics requires exact values (e.g., matching impedance). LLMs are probabilistic token predictors; relying on them for raw facts is dangerous.
+3.  **State of the Art:** Current SOTA models (Claude 3.5 Sonnet, GPT-4o) already possess superior reasoning and coding capabilities than any smaller, fine-tuned model we could produce.
+
+### The Strategy
+*   **The Engineer (LLM):** Uses reasoning to connect systems. It writes Python code, doesn't manually place wires.
+*   **The Librarian (RAG):** A curated local database (`backend/knowledge/`) containing:
+    *   **The Cookbook:** Verified `kicad-sch-api` code snippets for common patterns (Buck Converters, MCU decoupling, USB-C ports).
+    *   **The Datasheet Reader:** A tool that extracts "Typical Application" schematics from PDFs to ground the design in manufacturer specs.
+
+### Implementation
+1.  **Context Injection:** When a user asks for a "5V Regulator," the system retrieves the `LDO_Pattern.py` and `Buck_Converter_Pattern.py` snippets.
+2.  **Tool Execution:** The LLM calls the `search_component` tool to find a real, in-stock part at LCSC/DigiKey.
+3.  **Code Synthesis:** The LLM combines the *Pattern* (logic) with the *Component Data* (parameters) to generate the final KiCad schematic script.
 
 ## 5. Next Steps
-1.  **Initialize Project:** Setup `git`, `uv` environment, and directory structure.
-2.  **Prototype "Part Search":** Build a simple script to query LCSC/DigiKey.
-3.  **Prototype "Schematic Gen":** Write a script using `kicad-sch-api` to generate a simple "Resistor + LED" schematic to prove viability.
+1.  **Initialize Project:** Setup `git`, `uv` environment, and directory structure. (Completed)
+2.  **Prototype "Schematic Gen":** Write a script using `kicad-sch-api` to generate a simple "Resistor + LED" schematic. (Completed)
+3.  **Prototype "Part Search":** Build a simple script to query LCSC/DigiKey.
+4.  **Knowledge Base:** Create the initial `backend/knowledge/patterns/` directory and populate it with a "Hello World" schematic pattern.

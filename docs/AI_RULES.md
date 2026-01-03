@@ -32,4 +32,12 @@
 
 ## Architectural Patterns
 *   **RAG over Fine-tuning:** Use Retrieval-Augmented Generation for specialized knowledge.
+    *   **The Cookbook:** All schematic generation logic must rely on verified snippets from `backend/knowledge/patterns/`.
+    *   **Fact Checking:** The AI must use the `datasheet_reader` tool (when available) to verify pinouts and values against manufacturer specs.
 *   **Unified Part Model:** All part data (from LCSC, DigiKey, etc.) must be normalized to the internal `Part` schema before being used by the application.
+
+## Knowledge Management
+*   **Pattern Storage:** Common circuit designs (e.g., USB-C input) must be saved as Python scripts in `backend/knowledge/patterns/`.
+*   **No Hallucinations:** If a pattern does not exist, the Agent must either:
+    1.  Search for a similar verified pattern.
+    2.  Explicitly state it is generating a "Best Effort" design and request user verification.
