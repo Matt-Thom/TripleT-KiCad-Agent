@@ -1,12 +1,22 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
+from backend.services.ai import ai_service
 from typing import List
 import os
 
 app = FastAPI(title="TripleT KiCad Agent")
+
+# Models for Chat
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
 
 # CORS Configuration
 origins = [
@@ -58,3 +68,28 @@ async def generate_schematic(mpn: str, supplier_id: str):
             raise HTTPException(status_code=500, detail="Failed to generate schematic file")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+    """
+    Send messages to the AI Agent.
+    """
+    # Convert Pydantic models to list of dicts for LiteLLM
+    messages = [m.model_dump() for m in request.messages]
+    
+    # We should add a System Prompt here to ground the AI in KiCad 9 context
+    system_prompt = {
+        "role": "system",
+        "content": (
+            "You are the TripleT KiCad Agent, an expert in electronics design and KiCad 9. "
+            "Help the user design circuits, select components, and understand electronics theory. "
+            "Be concise, technical, and accurate. Always prioritize safety and best practices."
+        )
+    }
+    
+    # Prepend system prompt if not already present
+    if not any(m["role"] == "system" for m in messages):
+        messages.insert(0, system_prompt)
+
+    response_text = await ai_service.get_response(messages)
+    return {"content": response_text}
