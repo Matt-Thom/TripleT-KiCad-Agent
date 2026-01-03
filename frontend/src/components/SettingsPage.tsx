@@ -7,6 +7,8 @@ interface SettingsData {
     anthropic_api_key: string;
     gemini_api_key: string;
     default_model: string;
+    kicad_symbol_dir: string;
+    kicad_footprint_dir: string;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -14,7 +16,9 @@ export const SettingsPage: React.FC = () => {
         openai_api_key: '',
         anthropic_api_key: '',
         gemini_api_key: '',
-        default_model: 'gemini/gemini-pro'
+        default_model: 'gemini/gemini-pro',
+        kicad_symbol_dir: '',
+        kicad_footprint_dir: ''
     });
     const [status, setStatus] = useState('');
 
@@ -28,7 +32,9 @@ export const SettingsPage: React.FC = () => {
                     openai_api_key: data.openai_api_key || '',
                     anthropic_api_key: data.anthropic_api_key || '',
                     gemini_api_key: data.gemini_api_key || '',
-                    default_model: data.default_model || 'gemini/gemini-pro'
+                    default_model: data.default_model || 'gemini/gemini-pro',
+                    kicad_symbol_dir: data.kicad_symbol_dir || '',
+                    kicad_footprint_dir: data.kicad_footprint_dir || ''
                 });
             } catch (error) {
                 console.error("Failed to load settings", error);
@@ -59,6 +65,34 @@ export const SettingsPage: React.FC = () => {
             <h2 className="text-2xl font-bold mb-6">Settings</h2>
             
             <form onSubmit={handleSave} className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                    <h3 className="text-lg font-semibold mb-2">KiCad Configuration</h3>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Symbol Library Path</label>
+                            <input
+                                type="text"
+                                name="kicad_symbol_dir"
+                                value={settings.kicad_symbol_dir}
+                                onChange={handleChange}
+                                placeholder="C:\Program Files\KiCad\9.0\share\kicad\symbols"
+                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Footprint Library Path</label>
+                            <input
+                                type="text"
+                                name="kicad_footprint_dir"
+                                value={settings.kicad_footprint_dir}
+                                onChange={handleChange}
+                                placeholder="C:\Program Files\KiCad\9.0\share\kicad\footprints"
+                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Default AI Model</label>
                     <select
@@ -67,10 +101,17 @@ export const SettingsPage: React.FC = () => {
                         onChange={handleChange}
                         className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     >
-                        <optgroup label="Google Gemini (Frontier)">
-                            <option value="gemini/gemini-3-pro">Gemini 3 Pro (Deep Think)</option>
-                            <option value="gemini/gemini-3-flash">Gemini 3 Flash (High Speed)</option>
-                            <option value="gemini/gemini-2.0-pro-exp">Gemini 2.0 Pro (Stable)</option>
+                        <optgroup label="Google Gemini (Available)">
+                            <option value="gemini/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini/gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini/gemini-2.0-flash">Gemini 2.0 Flash</option>
+                            <option value="gemini/gemini-3-pro-preview">Gemini 3 Pro Preview</option>
+                            <option value="gemini/gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                            <option value="gemini/gemini-flash-latest">Gemini Flash (Latest)</option>
+                        </optgroup>
+                        <optgroup label="Google Gemini (Legacy)">
+                            <option value="gemini/gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
+                            <option value="gemini/gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
                         </optgroup>
                         <optgroup label="OpenAI GPT">
                             <option value="gpt-5.2">GPT-5.2 (Agentic)</option>

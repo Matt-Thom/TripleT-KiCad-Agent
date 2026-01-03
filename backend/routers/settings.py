@@ -14,7 +14,9 @@ def load_settings():
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
-        default_model=os.getenv("DEFAULT_AI_MODEL", "gemini/gemini-pro")
+        default_model=os.getenv("DEFAULT_AI_MODEL", "gemini/gemini-pro"),
+        kicad_symbol_dir=os.getenv("KICAD_SYMBOL_DIR", ""),
+        kicad_footprint_dir=os.getenv("KICAD_FOOTPRINT_DIR", "")
     )
 
 @router.get("/settings", response_model=Settings)
@@ -30,21 +32,24 @@ def update_settings(settings: Settings):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
     if settings.gemini_api_key:
         os.environ["GEMINI_API_KEY"] = settings.gemini_api_key
+    if settings.kicad_symbol_dir:
+        os.environ["KICAD_SYMBOL_DIR"] = settings.kicad_symbol_dir
+    if settings.kicad_footprint_dir:
+        os.environ["KICAD_FOOTPRINT_DIR"] = settings.kicad_footprint_dir
     
     os.environ["DEFAULT_AI_MODEL"] = settings.default_model
 
     # Persist to .env file (Basic implementation)
     try:
-        lines = []
-        # Read existing lines to preserve comments/structure if possible, 
-        # but for MVP we might just append/rewrite. 
-        # A simpler approach is just rewriting the keys we know.
-        
         env_content = f"""# AI API Keys
 OPENAI_API_KEY={settings.openai_api_key or ""}
 ANTHROPIC_API_KEY={settings.anthropic_api_key or ""}
 GEMINI_API_KEY={settings.gemini_api_key or ""}
 DEFAULT_AI_MODEL={settings.default_model}
+
+# KiCad Configuration
+KICAD_SYMBOL_DIR={settings.kicad_symbol_dir or ""}
+KICAD_FOOTPRINT_DIR={settings.kicad_footprint_dir or ""}
 """
         with open(SETTINGS_FILE, "w") as f:
             f.write(env_content)

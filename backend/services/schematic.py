@@ -26,8 +26,6 @@ class SchematicService:
         sch.title = f"Component: {mpn}"
         sch.date = datetime.now().strftime("%Y-%m-%d")
 
-        # Add a text label so the user sees something immediately
-        from kicad_sch_api import Label
         # Note: kicad_sch_api usually requires a Symbol object to add a component.
         # Since we don't have a library table set up on the server, we cannot easily "place" a verified symbol.
         # However, we can create a "Project Library" embedded.
