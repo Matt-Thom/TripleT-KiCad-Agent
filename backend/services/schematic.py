@@ -38,7 +38,7 @@ class SchematicService:
         
         # Manual construction of a minimal valid KiCad 9 schematic with one symbol
         file_content = f"""(kicad_sch
-    (version 20240108)
+    (version 20250114)
     (generator "TripleT-Agent")
     (uuid "33694086-6638-4672-8418-1850388e3609")
     (paper "A4")
