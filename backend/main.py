@@ -78,7 +78,13 @@ async def generate_schematic(mpn: str, supplier_id: str):
 
 @app.get("/api/download/{filename}")
 async def download_file(filename: str):
-    file_path = os.path.join("generated_schematics", filename)
+    base_dir = os.path.abspath("generated_schematics")
+    file_path = os.path.abspath(os.path.join(base_dir, filename))
+
+    # Prevent path traversal
+    if os.path.commonpath([base_dir, file_path]) != base_dir:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     if os.path.exists(file_path):
         return FileResponse(
             path=file_path, 
