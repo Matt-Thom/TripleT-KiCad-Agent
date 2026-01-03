@@ -13,8 +13,12 @@ export const BOMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [items, setItems] = useState<Part[]>([]);
 
     const addToBOM = (part: Part) => {
+        console.log("Adding to BOM:", part);
         setItems(prev => {
-            if (prev.find(p => p.mpn === part.mpn)) return prev;
+            if (prev.find(p => p.mpn === part.mpn)) {
+                console.log("Part already in BOM");
+                return prev;
+            }
             return [...prev, part];
         });
     };

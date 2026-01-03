@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { useBOM } from '../context/BOMContext';
 
 interface Message {
   id: string;
@@ -9,6 +11,7 @@ interface Message {
 }
 
 export const ChatInterface: React.FC = () => {
+  const { items: bomItems } = useBOM();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -31,7 +34,11 @@ export const ChatInterface: React.FC = () => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    console.log('handleSend fired! Input:', input);
+    if (!input.trim() || isLoading) {
+      console.log('handleSend aborted: input empty or already loading');
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -40,17 +47,34 @@ export const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
 
+    console.log('Adding user message to state:', userMessage);
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
+      console.log('Sending POST request to /api/chat...');
+      
+      // Inject BOM context if items exist
+      const bomContextMessage = bomItems.length > 0 ? {
+        role: "system",
+        content: `Current BOM Context: The user has the following parts in their Bill of Materials: ${JSON.stringify(bomItems.map(i => ({ mpn: i.mpn, desc: i.description })))}. Use this context if they ask about 'my parts' or 'the BOM'.`
+      } : null;
+
+      const apiMessages = [...messages, userMessage].map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      if (bomContextMessage) {
+        // Insert BOM context before the last user message
+        apiMessages.splice(apiMessages.length - 1, 0, bomContextMessage);
+      }
+
       const response = await axios.post('http://localhost:8000/api/chat', {
-        messages: [...messages, userMessage].map(m => ({
-          role: m.role,
-          content: m.content
-        }))
+        messages: apiMessages
       });
+      console.log('Received response from backend:', response.data);
 
       const assistantMessage: Message = {
         id: Date.now().toString(),
@@ -59,17 +83,18 @@ export const ChatInterface: React.FC = () => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (error: any) {
+      console.error('Failed to send message error object:', error);
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error while connecting to my brain. Please check the backend.',
+        content: `Sorry, I encountered an error: ${error.message}. Please check the console.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      console.log('handleSend completed.');
     }
   };
 
