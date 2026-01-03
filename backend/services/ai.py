@@ -7,6 +7,7 @@ from backend.services.tools import tools, execute_tool
 load_dotenv()
 
 class AIService:
+    # Service to handle AI interaction
     def __init__(self, model: str = "gpt-4o"):
         # Allow environment variable to override default model
         self.model = os.getenv("DEFAULT_AI_MODEL", model)
@@ -58,6 +59,6 @@ class AIService:
 
         except Exception as e:
             print(f"AI Service Error: {e}")
-            return f"Error: I'm having trouble thinking right now. ({str(e)})"
+            return f"Error: I'm having trouble thinking right now. Model: {self.model}. Error: {str(e)}"
 
 ai_service = AIService()
