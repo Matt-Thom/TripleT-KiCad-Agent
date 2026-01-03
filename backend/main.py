@@ -17,7 +17,10 @@ app.include_router(settings.router, prefix="/api")
 # Models for Chat
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str | None = None # Allow null content for tool calls
+    
+    class Config:
+        extra = "allow" # Allow extra fields like 'tool_calls', 'function_call', 'name', 'tool_call_id'
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
@@ -72,6 +75,17 @@ async def generate_schematic(mpn: str, supplier_id: str):
             raise HTTPException(status_code=500, detail="Failed to generate schematic file")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/download/{filename}")
+async def download_file(filename: str):
+    file_path = os.path.join("generated_schematics", filename)
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path, 
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+    raise HTTPException(status_code=404, detail="File not found")
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):

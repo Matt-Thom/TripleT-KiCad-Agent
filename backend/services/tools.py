@@ -61,6 +61,8 @@ async def execute_tool(name: str, args: dict):
     elif name == "generate_schematic":
         # Returns a file path
         path = schematic_service.generate_single_component_sch(args["mpn"], args["supplier_id"])
-        return f"Schematic generated successfully at: {path}. Tell the user they can download it using the 'Generate Schematic' button in the search results or via the API."
+        filename = os.path.basename(path)
+        download_url = f"http://localhost:8000/api/download/{filename}"
+        return f"Schematic generated. Download Link: [Download {args['mpn']} Schematic]({download_url})"
         
     return "Error: Tool not found."
