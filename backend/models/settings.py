@@ -1,0 +1,8 @@
+from pydantic import BaseModel
+from typing import Optional
+
+class Settings(BaseModel):
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    default_model: str = "gemini/gemini-pro"

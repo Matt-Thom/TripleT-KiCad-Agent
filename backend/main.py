@@ -5,10 +5,14 @@ from pydantic import BaseModel
 from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
 from backend.services.ai import ai_service
+from backend.routers import settings
 from typing import List
 import os
 
 app = FastAPI(title="TripleT KiCad Agent")
+
+# Include Routers
+app.include_router(settings.router, prefix="/api")
 
 # Models for Chat
 class ChatMessage(BaseModel):
