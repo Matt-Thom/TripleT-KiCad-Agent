@@ -33,8 +33,9 @@ To balance powerful AI processing with KiCad's desktop nature, we will use a **L
 *   **Database:** SQLite (with `SQLAlchemy` or `Tortoise-ORM`) for storing user preferences, chat history, and cached part data.
 *   **AI/LLM:** Integration with OpenAI/Anthropic APIs (initially) via `LiteLLM` or `LangChain`.
 *   **KiCad Interface:**
-    *   **Generation:** `kicad-sch-api` (for generating visual `.kicad_sch` files) or `skidl` (for logical netlists). *Decision: Focus on `kicad-sch-api` so users get a visual schematic.*
-    *   **Live Control:** `kicad-python` (KiCad 9 IPC) for future live updates, but file generation is safer for MVP.
+    *   **Generation:** `kicad-sch-api` (for generating visual `.kicad_sch` files).
+    *   **Target Version:** **KiCad 9.0**.
+    *   **Live Control:** `kicad-python` (KiCad 9 IPC) for future live updates.
 
 ## 2. Capability Roadmap
 
@@ -49,14 +50,14 @@ To balance powerful AI processing with KiCad's desktop nature, we will use a **L
 *   **Goal:** "Create a power supply for this 5V rail."
 *   **Features:**
     *   Agent generates a `.kicad_sch` file using `kicad-sch-api`.
-    *   User manually imports/opens this sheet in KiCad.
+    *   User manually imports/opens this sheet in KiCad 9.
     *   Verification: Basic electrical rule checks (e.g., "Did you forget a decoupling capacitor?").
 
 ### Phase 3: The "KiCad Native" (Plugin Integration)
 *   **Goal:** Seamless workflow inside KiCad.
 *   **Features:**
     *   A KiCad Plugin button opens the Web UI in a floating window.
-    *   One-click "Insert into Schematic" (requires advanced KiCad scripting/IPC).
+    *   One-click "Insert into Schematic" (requires advanced KiCad 9 scripting/IPC).
 
 ### Phase 4: The "PCB Auto-Router" (Future)
 *   **Goal:** "Place and route this schematic on a 2-layer board."
@@ -67,21 +68,7 @@ To balance powerful AI processing with KiCad's desktop nature, we will use a **L
     *   Assisted routing or integration with external routing engines.
 
 ## 3. Standards & Development Rules
-
-### Coding Standards (AI Guardrails)
-*   **Python:**
-    *   Strict Type Hinting (`mypy` compliant).
-    *   Style: `Ruff` (replaces Black/Isort/Flake8).
-    *   Docstrings: Google Style.
-*   **Frontend:**
-    *   TypeScript for all components.
-    *   Functional Components with Hooks.
-*   **Testing:**
-    *   Backend: `pytest` with coverage requirements.
-    *   Frontend: `Vitest` or `Jest`.
-*   **Version Control:**
-    *   Branches: `main` (Stable), `dev` (Testing/Integration).
-    *   Commits: Conventional Commits (e.g., `feat: add lcsc search`).
+See [AI_RULES.md](docs/AI_RULES.md) for the complete list of coding standards, architectural guidelines, and documentation mandates.
 
 ## 4. Training & Context (RAG vs. Fine-Tuning)
 We will NOT train (fine-tune) a model initially. We will use **RAG (Retrieval-Augmented Generation)**.

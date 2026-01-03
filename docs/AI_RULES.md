@@ -1,0 +1,35 @@
+# AI Development Rules & Guidelines
+
+## Core Mandates
+1.  **Documentation First:** usage of tools, APIs, and architectural decisions must be documented immediately. If you add a feature, update the relevant `docs/*.md` file. **Never leave documentation out of sync with code.**
+2.  **KiCad 9 Native:** All file generation and scripting must target **KiCad 9.0+**. Do not rely on deprecated KiCad 6/7/8 patterns unless strictly necessary for compatibility libraries.
+3.  **Local-First:** The architecture prioritizes running locally on the user's machine. Cloud calls (AI, Part Search) are the exception, not the rule.
+
+## Coding Standards
+
+### Python (Backend)
+*   **Version:** Python 3.12+
+*   **Type Hints:** Strict typing required for all function signatures. Use `mypy` to verify.
+*   **Style:** Follow `Ruff` defaults (which subsume Black/Isort/Flake8).
+*   **Docstrings:** Google Style docstrings for all modules, classes, and public functions.
+*   **Testing:** `pytest` is the standard. All new endpoints/logic must have accompanying tests.
+
+### TypeScript (Frontend)
+*   **Framework:** React + Tailwind CSS.
+*   **Strict Mode:** Enabled. No `any` types unless absolutely unavoidable.
+*   **Components:** Functional components with Hooks.
+
+### Version Control
+*   **Commits:** Follow Conventional Commits specification.
+    *   `feat: ...` for new features.
+    *   `fix: ...` for bug fixes.
+    *   `docs: ...` for documentation updates.
+    *   `chore: ...` for maintenance.
+*   **Branches:**
+    *   `main`: Stable release.
+    *   `dev`: Integration branch.
+    *   `feature/*`: Individual feature branches.
+
+## Architectural Patterns
+*   **RAG over Fine-tuning:** Use Retrieval-Augmented Generation for specialized knowledge.
+*   **Unified Part Model:** All part data (from LCSC, DigiKey, etc.) must be normalized to the internal `Part` schema before being used by the application.
