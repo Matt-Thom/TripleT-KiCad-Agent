@@ -24,6 +24,9 @@ class LCSCService:
                     params={"q": keyword},
                     headers={"User-Agent": "TripleT-KiCad-Agent/0.1"}
                 )
+                if response.status_code >= 500:
+                    return [] # Return empty list but log internally, or we could raise.
+                
                 response.raise_for_status()
                 data = response.json()
                 

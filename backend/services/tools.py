@@ -7,13 +7,13 @@ tools = [
         "type": "function",
         "function": {
             "name": "search_lcsc",
-            "description": "Search for electronic components on LCSC/JLCPCB to check stock, price, and specs.",
+            "description": "Search for electronic components on LCSC/JLCPCB. IMPORTANT: Search for ONE component at a time. If the user asks for multiple parts (e.g., 'STM32 and KX134'), call this tool twice: once for 'STM32' and once for 'KX134'.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search term (e.g., 'STM32F4', '10k resistor', 'USB-C connector')."
+                        "description": "The search term for A SINGLE component (e.g., 'STM32F4', 'KX134')."
                     }
                 },
                 "required": ["query"]
@@ -49,9 +49,14 @@ async def execute_tool(name: str, args: dict):
     """
     if name == "search_lcsc":
         # Returns a list of Part objects, we need to serialize them to text/json for the AI
-        results = await lcsc_service.search(args["query"])
-        # Limit to top 3 to save context window
-        return str([p.model_dump() for p in results[:3]])
+        try:
+            results = await lcsc_service.search(args["query"])
+            if not results:
+                return f"No results found for query: '{args['query']}'. Try a broader search term."
+            # Limit to top 3 to save context window
+            return str([p.model_dump() for p in results[:3]])
+        except Exception as e:
+            return f"Error searching for '{args['query']}': {str(e)}"
         
     elif name == "generate_schematic":
         # Returns a file path
