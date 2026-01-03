@@ -9,6 +9,31 @@ export const PartSearch: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const handleGenerateSchematic = async (mpn: string, supplierId: string) => {
+        try {
+            const response = await axios.post(
+                `http://localhost:8000/api/generate/schematic`, 
+                null, 
+                {
+                    params: { mpn, supplier_id: supplierId },
+                    responseType: 'blob'
+                }
+            );
+            
+            // Create download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${mpn}.kicad_sch`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate schematic.');
+        }
+    };
+
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!query.trim()) return;
@@ -70,9 +95,15 @@ export const PartSearch: React.FC = () => {
                                     Stock: <span className="font-semibold">{part.stock}</span>
                                 </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex flex-col gap-2">
                                 <div className="text-xl font-bold text-green-600">${part.price.toFixed(4)}</div>
-                                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded mt-1">
+                                <button 
+                                    onClick={() => handleGenerateSchematic(part.mpn, part.supplier_part_number)}
+                                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200"
+                                >
+                                    Generate Schematic
+                                </button>
+                                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded">
                                     Add to BOM
                                 </button>
                             </div>

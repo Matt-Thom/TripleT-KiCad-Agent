@@ -1,7 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from backend.services.lcsc import lcsc_service, Part
+from backend.services.schematic import schematic_service
 from typing import List
+import os
 
 app = FastAPI(title="TripleT KiCad Agent")
 
@@ -37,3 +40,21 @@ async def search_lcsc(q: str):
     
     results = await lcsc_service.search(q)
     return results
+
+@app.post("/api/generate/schematic")
+async def generate_schematic(mpn: str, supplier_id: str):
+    """
+    Generate a KiCad schematic for a specific component.
+    """
+    try:
+        file_path = schematic_service.generate_single_component_sch(mpn, supplier_id)
+        if os.path.exists(file_path):
+            return FileResponse(
+                path=file_path, 
+                filename=os.path.basename(file_path),
+                media_type='application/octet-stream'
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate schematic file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
