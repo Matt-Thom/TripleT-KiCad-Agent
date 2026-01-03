@@ -10,6 +10,7 @@ __pycache__/
 fp-info-cache
 *.bak
 _autosave-*
+*.kicad_sch
 
 # IDEs
 .vscode/
