@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Part } from '../types/Part';
-import { Search, Loader2 } from 'lucide-react';
+import type { Part } from '../types/Part';
+import { Search, Loader2, Check } from 'lucide-react';
+import { useBOM } from '../context/BOMContext';
 
 export const PartSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Part[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const { addToBOM, items } = useBOM();
+
+    const isPartInBOM = (mpn: string) => items.some(p => p.mpn === mpn);
 
     const handleGenerateSchematic = async (mpn: string, supplierId: string) => {
         try {
@@ -103,8 +107,16 @@ export const PartSearch: React.FC = () => {
                                 >
                                     Generate Schematic
                                 </button>
-                                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded">
-                                    Add to BOM
+                                <button 
+                                    onClick={() => addToBOM(part)}
+                                    disabled={isPartInBOM(part.mpn)}
+                                    className={`text-xs px-2 py-1 rounded flex items-center justify-center gap-1 ${
+                                        isPartInBOM(part.mpn) 
+                                        ? 'bg-green-100 text-green-800 cursor-default' 
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                                    }`}
+                                >
+                                    {isPartInBOM(part.mpn) ? <><Check className="h-3 w-3"/> Added</> : 'Add to BOM'}
                                 </button>
                             </div>
                         </div>
