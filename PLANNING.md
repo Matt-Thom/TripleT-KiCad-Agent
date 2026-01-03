@@ -53,13 +53,14 @@ To balance powerful AI processing with KiCad's desktop nature, we will use a **L
     *   User manually imports/opens this sheet in KiCad 9.
     *   Verification: Basic electrical rule checks (e.g., "Did you forget a decoupling capacitor?").
 
-### Phase 3: The "KiCad Native" (Plugin Integration)
-*   **Goal:** Seamless workflow inside KiCad.
+### Phase 3: The "Agentic" Interface (Chat & Settings)
+*   **Goal:** A centralized hub for interaction and configuration.
 *   **Features:**
-    *   A KiCad Plugin button opens the Web UI in a floating window.
-    *   One-click "Insert into Schematic" (requires advanced KiCad 9 scripting/IPC).
+    *   Chat Interface with streaming responses (WebSockets or Polling).
+    *   **Model Configuration:** A Settings page allowing the user to switch between models (Gemini 3, GPT-5.2, Claude 4.5) and manage API keys dynamically.
+    *   System Prompt Customization (Future).
 
-### Phase 4: The "PCB Auto-Router" (Future)
+### Phase 4: The "Schematic Drafter" (Tool Use)
 *   **Goal:** "Place and route this schematic on a 2-layer board."
 *   **Challenges:** PCB layout involves complex spatial reasoning and physics (impedance, thermal) which is significantly harder than schematic connectivity.
 *   **Features:**
