@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { useBOM } from '../context/BOMContext';
 
@@ -123,7 +124,9 @@ export const ChatInterface: React.FC = () => {
               <div className="mt-1 flex-shrink-0">
                 {m.role === 'user' ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5 text-blue-600" />}
               </div>
-              <div className="text-sm whitespace-pre-wrap">{m.content}</div>
+              <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}

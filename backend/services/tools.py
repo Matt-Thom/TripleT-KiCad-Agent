@@ -1,3 +1,4 @@
+import os
 from backend.services.lcsc import lcsc_service
 from backend.services.schematic import schematic_service
 
