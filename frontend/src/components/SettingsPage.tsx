@@ -67,11 +67,23 @@ export const SettingsPage: React.FC = () => {
                         onChange={handleChange}
                         className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     >
-                        <option value="gpt-4o">OpenAI GPT-4o</option>
-                        <option value="claude-3-5-sonnet-20240620">Anthropic Claude 3.5 Sonnet</option>
-                        <option value="gemini/gemini-pro">Google Gemini Pro</option>
-                        <option value="gemini/gemini-1.5-pro">Google Gemini 1.5 Pro</option>
-                        <option value="gemini/gemini-1.5-flash">Google Gemini 1.5 Flash</option>
+                        <optgroup label="Google Gemini (Frontier)">
+                            <option value="gemini/gemini-3-pro">Gemini 3 Pro (Deep Think)</option>
+                            <option value="gemini/gemini-3-flash">Gemini 3 Flash (High Speed)</option>
+                            <option value="gemini/gemini-2.0-pro-exp">Gemini 2.0 Pro (Stable)</option>
+                        </optgroup>
+                        <optgroup label="OpenAI GPT">
+                            <option value="gpt-5.2">GPT-5.2 (Agentic)</option>
+                            <option value="gpt-4.1">GPT-4.1 (Coding Specialist)</option>
+                            <option value="o1">o1 (High Reasoning)</option>
+                        </optgroup>
+                        <optgroup label="Anthropic Claude">
+                            <option value="claude-4.5-opus">Claude 4.5 Opus (MCP Native)</option>
+                            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+                        </optgroup>
+                        <optgroup label="xAI Grok">
+                            <option value="grok-4.1">Grok 4.1 (Tool Expert)</option>
+                        </optgroup>
                     </select>
                 </div>
 
