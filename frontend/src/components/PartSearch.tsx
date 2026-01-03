@@ -1,0 +1,87 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { Part } from '../types/Part';
+import { Search, Loader2 } from 'lucide-react';
+
+export const PartSearch: React.FC = () => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<Part[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!query.trim()) return;
+
+        setLoading(true);
+        setError('');
+        setResults([]);
+
+        try {
+            const response = await axios.get<Part[]>(`http://localhost:8000/api/search/lcsc`, {
+                params: { q: query }
+            });
+            setResults(response.data);
+        } catch (err) {
+            console.error(err);
+            setError('Failed to fetch results. Ensure backend is running.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="p-4 max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold mb-4">Component Search</h2>
+            
+            <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+                <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search for parts (e.g., STM32, 10k Resistor)..."
+                    className="flex-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black"
+                />
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                >
+                    {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Search className="h-4 w-4" />}
+                    Search
+                </button>
+            </form>
+
+            {error && (
+                <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4">
+                    {error}
+                </div>
+            )}
+
+            <div className="space-y-2">
+                {results.length > 0 ? (
+                    results.map((part) => (
+                        <div key={part.supplier_part_number} className="bg-white p-4 rounded-lg shadow border border-gray-200 flex justify-between items-center text-black">
+                            <div>
+                                <h3 className="font-bold text-lg">{part.mpn}</h3>
+                                <p className="text-sm text-gray-600">{part.description}</p>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Supplier: <span className="font-semibold">{part.supplier}</span> | 
+                                    Stock: <span className="font-semibold">{part.stock}</span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xl font-bold text-green-600">${part.price.toFixed(4)}</div>
+                                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded mt-1">
+                                    Add to BOM
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    !loading && <div className="text-center text-gray-500 mt-10">No results found.</div>
+                )}
+            </div>
+        </div>
+    );
+};
