@@ -25,6 +25,14 @@ def get_settings():
 
 @router.post("/settings")
 def update_settings(settings: Settings):
+    # Security: Validate inputs to prevent .env injection
+    for field, value in settings.model_dump().items():
+        if isinstance(value, str) and value:
+            if "\n" in value or "\r" in value:
+                raise HTTPException(status_code=400, detail=f"Invalid character (newline) in field {field}")
+            if "'" in value:
+                raise HTTPException(status_code=400, detail=f"Invalid character (single quote) in field {field}")
+
     # Update environment variables for the current process
     if settings.openai_api_key:
         os.environ["OPENAI_API_KEY"] = settings.openai_api_key
@@ -41,15 +49,17 @@ def update_settings(settings: Settings):
 
     # Persist to .env file (Basic implementation)
     try:
+        # Quote values to handle spaces and prevent some injection issues,
+        # though the newline check above is the primary defense.
         env_content = f"""# AI API Keys
-OPENAI_API_KEY={settings.openai_api_key or ""}
-ANTHROPIC_API_KEY={settings.anthropic_api_key or ""}
-GEMINI_API_KEY={settings.gemini_api_key or ""}
-DEFAULT_AI_MODEL={settings.default_model}
+OPENAI_API_KEY='{settings.openai_api_key or ""}'
+ANTHROPIC_API_KEY='{settings.anthropic_api_key or ""}'
+GEMINI_API_KEY='{settings.gemini_api_key or ""}'
+DEFAULT_AI_MODEL='{settings.default_model}'
 
 # KiCad Configuration
-KICAD_SYMBOL_DIR={settings.kicad_symbol_dir or ""}
-KICAD_FOOTPRINT_DIR={settings.kicad_footprint_dir or ""}
+KICAD_SYMBOL_DIR='{settings.kicad_symbol_dir or ""}'
+KICAD_FOOTPRINT_DIR='{settings.kicad_footprint_dir or ""}'
 """
         with open(SETTINGS_FILE, "w") as f:
             f.write(env_content)
