@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
@@ -8,8 +8,25 @@ from backend.services.ai import ai_service
 from backend.routers import settings
 from typing import List
 import os
+import logging
+
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TripleT KiCad Agent")
+
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception handler caught: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
 
 # Include Routers
 app.include_router(settings.router, prefix="/api")
@@ -72,9 +89,14 @@ async def generate_schematic(mpn: str, supplier_id: str):
                 media_type='application/octet-stream'
             )
         else:
+            logger.error("Failed to generate schematic file: File not found after generation.")
             raise HTTPException(status_code=500, detail="Failed to generate schematic file")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating schematic: {e}", exc_info=True)
+        # Re-raise generic error to be caught by global handler or return 500 here
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/api/download/{filename}")
 async def download_file(filename: str):
