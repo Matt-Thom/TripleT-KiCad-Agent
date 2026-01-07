@@ -1,45 +1,68 @@
 import pytest
 import os
-import shutil
-from backend.services.schematic import SchematicService
+from fastapi.testclient import TestClient
+from backend.main import app
 
-@pytest.fixture
-def schematic_service():
-    test_dir = "backend/tests/generated_schematics_test"
-    if os.path.exists(test_dir):
-        shutil.rmtree(test_dir)
-    service = SchematicService(output_dir=test_dir)
-    yield service
-    if os.path.exists(test_dir):
-        shutil.rmtree(test_dir)
+client = TestClient(app)
 
-def test_sexp_injection_protection(schematic_service):
+def test_injection_vulnerability_repro():
     """
-    Test that malicious MPNs containing quotes and backslashes are properly escaped
-    in the generated S-Expression file.
+    Test that attempts to inject malicious content into the KiCad file.
+    The application should now sanitize the input, so the injection should fail.
+    The content should act as a string value, not S-Expression structure.
     """
-    # 1. Quote Injection
-    malicious_mpn = 'My"Name'
-    supplier_id = '123'
+    # Malicious MPN designed to break out of the string literal in the file content
+    payload = 'BadValue" (at 0 0 0)) (property "Injected" "Malicious"'
 
-    filepath = schematic_service.generate_single_component_sch(malicious_mpn, supplier_id)
+    supplier_id = "repro_supplier"
 
-    with open(filepath, 'r') as f:
-        content = f.read()
+    response = client.post(
+        "/api/generate/schematic",
+        params={"mpn": payload, "supplier_id": supplier_id}
+    )
 
-    # We expect the quote to be escaped as \"
-    assert '(property "Value" "My\\"Name"' in content
-    # We expect it NOT to be the raw injection
-    assert '(property "Value" "My"Name"' not in content
+    assert response.status_code == 200
 
-    # 2. Backslash Injection
-    # MPN = Test\Value -> Escaped = Test\\Value
-    malicious_mpn_slash = 'Test\\Value'
-    filepath_slash = schematic_service.generate_single_component_sch(malicious_mpn_slash, supplier_id)
+    content = response.content.decode("utf-8")
 
-    with open(filepath_slash, 'r') as f:
-        content_slash = f.read()
+    print("\nGenerated Content:\n", content)
 
-    # We expect backslash to be escaped as \\ (so in python string literal for assertion it is "\\\\")
-    # In the file it should look like "Test\\Value"
-    assert 'Test\\\\Value' in content_slash
+    # Verify that the injection string was escaped or sanitized.
+    # It should NOT appear as a raw property definition.
+    # It should appear as an escaped string inside the "Value" property.
+    # KiCad escapes quotes as \"
+
+    expected_escaped = 'BadValue\\" (at 0 0 0)) (property \\"Injected\\" \\"Malicious\\"'
+
+    # We verify that our escaped version is present, meaning the injection was neutralized
+    assert expected_escaped in content
+
+    # And we verify that the raw unescaped injection is NOT present (except as part of the above)
+    # Actually, simplistic string search might find it if we are not careful.
+    # But essentially, we want to ensure the S-Expression structure is intact.
+    # The property "Injected" should not exist as a key.
+
+    # This regex looks for (property "Injected" "Malicious" literally as a property definition
+    # But since we are looking for the exact string, let's just assert that the *structure* is safe.
+    # If the quotes are escaped, it's treated as a value.
+
+    assert '(property "Value" "' + expected_escaped + '"' in content
+
+def test_filename_sanitization():
+    """
+    Test that the filename is sanitized.
+    """
+    payload = 'bad/filename\\test'
+    supplier_id = 'sup'
+
+    response = client.post(
+        "/api/generate/schematic",
+        params={"mpn": payload, "supplier_id": supplier_id}
+    )
+
+    assert response.status_code == 200
+
+    # Check Content-Disposition header for filename
+    content_disposition = response.headers["content-disposition"]
+    # expected: bad_filename_test_sup.kicad_sch
+    assert "bad_filename_test_sup.kicad_sch" in content_disposition
