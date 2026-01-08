@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
@@ -8,6 +8,11 @@ from backend.services.ai import ai_service
 from backend.routers import settings
 from typing import List
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TripleT KiCad Agent")
 
@@ -72,9 +77,13 @@ async def generate_schematic(mpn: str, supplier_id: str):
                 media_type='application/octet-stream'
             )
         else:
+            logger.error(f"Failed to generate schematic for {mpn}: File not found after generation")
             raise HTTPException(status_code=500, detail="Failed to generate schematic file")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating schematic for {mpn}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/api/download/{filename}")
 async def download_file(filename: str):
