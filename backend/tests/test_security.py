@@ -5,6 +5,7 @@ from backend.main import download_file
 from fastapi import HTTPException
 import os
 import shutil
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -59,3 +60,23 @@ async def test_path_traversal_attack_direct_call():
     except HTTPException as e:
         assert e.status_code == 403
         assert e.detail == "Access denied"
+
+def test_generate_schematic_info_leak_prevention():
+    """
+    Ensure that unexpected exceptions in the schematic generation endpoint
+    are caught and masked with a generic 'Internal Server Error' message,
+    and do not leak internal stack traces or sensitive info.
+    """
+    with patch("backend.services.schematic.schematic_service.generate_single_component_sch") as mock_generate:
+        mock_generate.side_effect = ValueError("SENSITIVE_DB_PASSWORD_LEAK")
+
+        response = client.post(
+            "/api/generate/schematic",
+            params={"mpn": "TEST-CHIP", "supplier_id": "12345"}
+        )
+
+        assert response.status_code == 500
+        # Ensure we don't leak the sensitive message
+        assert "SENSITIVE_DB_PASSWORD_LEAK" not in response.json()["detail"]
+        # Ensure we return the generic message
+        assert response.json()["detail"] == "Internal Server Error"

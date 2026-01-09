@@ -8,6 +8,11 @@ from backend.services.ai import ai_service
 from backend.routers import settings
 from typing import List
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TripleT KiCad Agent")
 
@@ -72,26 +77,36 @@ async def generate_schematic(mpn: str, supplier_id: str):
                 media_type='application/octet-stream'
             )
         else:
+            logger.error(f"Schematic generation failed (file not created) for mpn={mpn}")
             raise HTTPException(status_code=500, detail="Failed to generate schematic file")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating schematic for mpn={mpn}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/api/download/{filename}")
 async def download_file(filename: str):
-    base_dir = os.path.abspath("generated_schematics")
-    file_path = os.path.abspath(os.path.join(base_dir, filename))
+    try:
+        base_dir = os.path.abspath("generated_schematics")
+        file_path = os.path.abspath(os.path.join(base_dir, filename))
 
-    # Prevent path traversal
-    if os.path.commonpath([base_dir, file_path]) != base_dir:
-        raise HTTPException(status_code=403, detail="Access denied")
+        # Prevent path traversal
+        if os.path.commonpath([base_dir, file_path]) != base_dir:
+            raise HTTPException(status_code=403, detail="Access denied")
 
-    if os.path.exists(file_path):
-        return FileResponse(
-            path=file_path, 
-            filename=filename,
-            media_type='application/octet-stream'
-        )
-    raise HTTPException(status_code=404, detail="File not found")
+        if os.path.exists(file_path):
+            return FileResponse(
+                path=file_path,
+                filename=filename,
+                media_type='application/octet-stream'
+            )
+        raise HTTPException(status_code=404, detail="File not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
