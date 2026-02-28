@@ -41,3 +41,38 @@
 *   **No Hallucinations:** If a pattern does not exist, the Agent must either:
     1.  Search for a similar verified pattern.
     2.  Explicitly state it is generating a "Best Effort" design and request user verification.
+
+## KiCad MCP Server
+
+The project ships a local MCP (Model Context Protocol) server at `backend/kicad_mcp/`. All AI agents working on this project **must** use it as the primary source of KiCad knowledge rather than relying on training data.
+
+### When to Use the MCP Server
+*   **Always** use `parse_schematic` before analysing or modifying a `.kicad_sch` file.
+*   **Always** use `validate_schematic` after generating or editing a schematic.
+*   **Always** call `list_patterns` + `get_pattern` before writing new schematic generation code — use an existing verified pattern if one exists.
+*   Use `extract_bom` when the user asks about components, quantities, or BOM export.
+*   Use `generate_schematic_stub` as the starting point for new schematics, not a blank file.
+
+### MCP Resources (inject into context before answering KiCad questions)
+*   `kicad://docs/file-formats` — KiCad 9 S-Expression format reference
+*   `kicad://docs/schematic-symbols` — pin types, net labels, ERC connectivity
+*   `kicad://docs/erc-rules` — ERC rules and common design violations
+*   `kicad://patterns/list` — index of all available circuit patterns
+
+### Adding New Patterns
+When a new verified circuit block is created:
+1.  Save it as `backend/knowledge/patterns/<name>.py`
+2.  Start the file with a Google-style module docstring describing the circuit
+3.  Include LCSC part numbers, component values, and layout notes
+4.  Register it with a test in `backend/tests/test_kicad_mcp.py`
+
+### Running the MCP Server
+```bash
+# stdio (Claude Desktop)
+python -m backend.kicad_mcp.server
+
+# HTTP/SSE (FastAPI mount — see backend/main.py)
+# Mounted at /mcp automatically when the backend starts
+```
+
+See `docs/KICAD_MCP_SPEC.md` for the full specification.

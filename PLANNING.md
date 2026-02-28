@@ -95,3 +95,13 @@ We will **NOT** train or fine-tune a custom model. Electronics design requires h
 2.  **Prototype "Schematic Gen":** Write a script using `kicad-sch-api` to generate a simple "Resistor + LED" schematic. (Completed)
 3.  **Prototype "Part Search":** Build a simple script to query LCSC/DigiKey.
 4.  **Knowledge Base:** Create the initial `backend/knowledge/patterns/` directory and populate it with a "Hello World" schematic pattern.
+## 6. MCP Server (Added)
+
+A local **KiCad MCP server** (`backend/kicad_mcp/`) has been implemented on `feature/kicad-mcp`. It exposes:
+
+- **Tools:** `parse_schematic`, `validate_schematic`, `extract_bom`, `generate_schematic_stub`, `list_patterns`, `get_pattern`
+- **Resources:** KiCad 9 file format docs, ERC rules, circuit pattern index
+- **Prompts:** `design_review`, `part_selection` guided workflows
+- **Knowledge base:** 5 seed patterns in `backend/knowledge/patterns/`
+
+Agents working on this project should use the MCP server as their primary KiCad reference. See `docs/AI_RULES.md` and `docs/KICAD_MCP_SPEC.md`.
