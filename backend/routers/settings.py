@@ -16,7 +16,8 @@ def load_settings():
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
         default_model=os.getenv("DEFAULT_AI_MODEL", "gemini/gemini-pro"),
         kicad_symbol_dir=os.getenv("KICAD_SYMBOL_DIR", ""),
-        kicad_footprint_dir=os.getenv("KICAD_FOOTPRINT_DIR", "")
+        kicad_footprint_dir=os.getenv("KICAD_FOOTPRINT_DIR", ""),
+        kicad_sym_lib_table=os.getenv("KICAD_SYM_LIB_TABLE", "")
     )
 
 @router.get("/settings", response_model=Settings)
@@ -44,7 +45,9 @@ def update_settings(settings: Settings):
         os.environ["KICAD_SYMBOL_DIR"] = settings.kicad_symbol_dir
     if settings.kicad_footprint_dir:
         os.environ["KICAD_FOOTPRINT_DIR"] = settings.kicad_footprint_dir
-    
+    if settings.kicad_sym_lib_table:
+        os.environ["KICAD_SYM_LIB_TABLE"] = settings.kicad_sym_lib_table
+
     os.environ["DEFAULT_AI_MODEL"] = settings.default_model
 
     # Persist to .env file (Basic implementation)
@@ -60,6 +63,7 @@ DEFAULT_AI_MODEL='{settings.default_model}'
 # KiCad Configuration
 KICAD_SYMBOL_DIR='{settings.kicad_symbol_dir or ""}'
 KICAD_FOOTPRINT_DIR='{settings.kicad_footprint_dir or ""}'
+KICAD_SYM_LIB_TABLE='{settings.kicad_sym_lib_table or ""}'
 """
         with open(SETTINGS_FILE, "w") as f:
             f.write(env_content)
