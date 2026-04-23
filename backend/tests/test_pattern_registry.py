@@ -26,3 +26,27 @@ def test_pattern_protocol_has_metadata_and_apply():
     # Runtime-checkable protocol:
     from backend.knowledge.protocol import is_pattern
     assert is_pattern(Dummy())
+
+
+from backend.knowledge.registry import PatternRegistry
+
+
+def test_registry_autodiscovers_all_patterns():
+    registry = PatternRegistry.discover()
+    ids = {p.metadata.id for p in registry.all()}
+    assert "ldo_regulator" in ids
+    assert "usb_c_input" in ids
+    assert "i2c_pullups" in ids
+    assert "mcu_reset" in ids
+
+
+def test_registry_get_by_id():
+    registry = PatternRegistry.discover()
+    pat = registry.get("i2c_pullups")
+    assert pat is not None
+    assert pat.metadata.id == "i2c_pullups"
+
+
+def test_registry_get_missing_returns_none():
+    registry = PatternRegistry.discover()
+    assert registry.get("does_not_exist") is None
