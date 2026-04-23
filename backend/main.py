@@ -6,6 +6,8 @@ from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
 from backend.services.ai import ai_service
 from backend.routers import settings
+from backend.routers import projects as projects_router
+from backend.db import init_db
 from typing import List
 import os
 import logging
@@ -30,6 +32,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include Routers
 app.include_router(settings.router, prefix="/api")
+app.include_router(projects_router.router, prefix="/api")
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    await init_db()
 
 # Models for Chat
 class ChatMessage(BaseModel):
