@@ -49,3 +49,4 @@
 *   **No Hallucinations:** If a pattern does not exist, the Agent must either:
     1.  Search for a similar verified pattern.
     2.  Explicitly state it is generating a "Best Effort" design and request user verification.
+*   **Symbol Reuse:** Schematic generation prefers library symbols (looked up via `SymLibTable` at `KICAD_SYM_LIB_TABLE`) over procedural generation. Procedural generation is the fallback for misses only.

@@ -36,6 +36,10 @@ tools = [
                     "supplier_id": {
                         "type": "string",
                         "description": "The LCSC Part Number (e.g., 'C8734')."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional part description to improve library-symbol lookup."
                     }
                 },
                 "required": ["mpn", "supplier_id"]
@@ -60,8 +64,10 @@ async def execute_tool(name: str, args: dict):
             return f"Error searching for '{args['query']}': {str(e)}"
         
     elif name == "generate_schematic":
-        # Returns a file path
-        path = schematic_service.generate_single_component_sch(args["mpn"], args["supplier_id"])
+        path = schematic_service.generate_single_component_sch(
+            args["mpn"], args["supplier_id"],
+            description=args.get("description", ""),
+        )
         filename = os.path.basename(path)
         download_url = f"http://localhost:8000/api/download/{filename}"
         return f"Schematic generated. Download Link: [Download {args['mpn']} Schematic]({download_url})"

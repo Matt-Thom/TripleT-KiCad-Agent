@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "Device")(type "KiCad")(uri "${KIPRJMOD}/Device.kicad_sym")(options "")(descr "Generic devices"))
+  (lib (name "MCU_ST_STM32F1")(type "KiCad")(uri "${KICAD9_SYMBOL_DIR}/MCU_ST_STM32F1.kicad_sym")(options "")(descr "STM32F1"))
+)
