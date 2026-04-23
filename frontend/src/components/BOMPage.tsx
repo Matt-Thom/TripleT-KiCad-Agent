@@ -12,8 +12,8 @@ export const BOMPage: React.FC = () => {
             p.supplier,
             p.supplier_part_number,
             `"${p.description}"`, // Escape quotes
-            p.price.toString(),
-            p.stock.toString()
+            (p.price ?? 0).toString(),
+            (p.stock ?? 0).toString()
         ]);
         
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -62,8 +62,8 @@ export const BOMPage: React.FC = () => {
                                 <tr key={part.supplier_part_number}>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{part.mpn}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.supplier_part_number}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.stock}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${part.price.toFixed(4)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.stock ?? 0}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${(part.price ?? 0).toFixed(4)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button 
                                             onClick={() => removeFromBOM(part.mpn)}
