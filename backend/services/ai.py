@@ -25,8 +25,21 @@ class AIService:
         self.max_tool_turns = (
             max_tool_turns
             if max_tool_turns is not None
-            else int(env_cap) if env_cap else self.DEFAULT_MAX_TOOL_TURNS
+            else self._parse_env_cap(env_cap)
         )
+
+    @classmethod
+    def _parse_env_cap(cls, env_cap: str | None) -> int:
+        if not env_cap:
+            return cls.DEFAULT_MAX_TOOL_TURNS
+        try:
+            return int(env_cap.strip())
+        except ValueError:
+            logger.warning(
+                "Invalid AI_MAX_TOOL_TURNS=%r; falling back to default %d",
+                env_cap, cls.DEFAULT_MAX_TOOL_TURNS,
+            )
+            return cls.DEFAULT_MAX_TOOL_TURNS
 
     async def get_response(self, messages: list[dict[str, Any]]) -> str:
         messages = list(messages)  # Defensive copy — we mutate inside the loop.
@@ -42,6 +55,10 @@ class AIService:
                 tool_calls = getattr(message, "tool_calls", None)
 
                 if not tool_calls:
+                    if not message.content:
+                        logger.warning(
+                            "Model returned neither content nor tool_calls; returning empty reply"
+                        )
                     return message.content or ""
 
                 if turn == self.max_tool_turns:
@@ -53,16 +70,14 @@ class AIService:
                         "answer. Try breaking your request into smaller steps."
                     )
 
-                # Append as a dict so downstream message-list consumers can use .get()
-                if hasattr(message, "__dict__"):
-                    msg_dict = {
-                        "role": getattr(message, "role", "assistant"),
-                        "content": getattr(message, "content", None),
-                        "tool_calls": tool_calls,
-                    }
-                    messages.append(msg_dict)
-                else:
-                    messages.append(message)
+                # Append as a dict so downstream message-list consumers can use .get().
+                # Both litellm Message objects and SimpleNamespace test mocks have __dict__,
+                # so we can always rebuild a clean dict here.
+                messages.append({
+                    "role": getattr(message, "role", "assistant"),
+                    "content": getattr(message, "content", None),
+                    "tool_calls": tool_calls,
+                })
 
                 for tool_call in tool_calls:
                     fn_name = tool_call.function.name

@@ -18,7 +18,7 @@ def _make_completion(content=None, tool_calls=None):
     return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
 
 
-def test_get_response_executes_chained_tool_calls(monkeypatch):
+def test_get_response_executes_chained_tool_calls():
     """The loop must execute tool calls, feed results back, and continue until a text reply."""
     svc = AIService(model="test-model")
 
@@ -51,11 +51,14 @@ def test_get_response_executes_chained_tool_calls(monkeypatch):
     assert call_count["n"] == 3  # Two tool rounds + final text
 
 
-def test_get_response_respects_max_turns(monkeypatch):
+def test_get_response_respects_max_turns():
     """Loop must break after MAX_TURNS even if the model keeps requesting tools."""
     svc = AIService(model="test-model", max_tool_turns=2)
 
+    call_count = {"n": 0}
+
     def always_tool_call(**kwargs):
+        call_count["n"] += 1
         return _make_completion(tool_calls=[_make_tool_call("c", "search_lcsc", '{"query": "X"}')])
 
     async def fake_execute_tool(name, args):
@@ -67,9 +70,11 @@ def test_get_response_respects_max_turns(monkeypatch):
 
     # Should surface a graceful cap message, not an exception
     assert "maximum" in result.lower() or "limit" in result.lower()
+    # range(max_tool_turns + 1) == range(3) → exactly 3 completion() invocations
+    assert call_count["n"] == 3
 
 
-def test_get_response_recovers_from_tool_error(monkeypatch):
+def test_get_response_recovers_from_tool_error():
     """A raising tool should be reported back to the model as a tool result, not propagated."""
     svc = AIService(model="test-model")
 
