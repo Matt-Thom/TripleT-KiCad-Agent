@@ -50,3 +50,30 @@ def test_registry_get_by_id():
 def test_registry_get_missing_returns_none():
     registry = PatternRegistry.discover()
     assert registry.get("does_not_exist") is None
+
+
+from backend.knowledge.registry import PatternRetriever
+
+
+def test_retriever_finds_relevant_pattern_for_query():
+    registry = PatternRegistry.discover()
+    retriever = PatternRetriever(registry)
+    hits = retriever.search("3.3V regulator with caps", top_k=3)
+    ids = [h.metadata.id for h in hits]
+    assert "ldo_regulator" in ids
+
+
+def test_retriever_finds_i2c_bus_pullups():
+    registry = PatternRegistry.discover()
+    retriever = PatternRetriever(registry)
+    hits = retriever.search("need pullups for my i2c bus", top_k=2)
+    ids = [h.metadata.id for h in hits]
+    assert "i2c_pullups" in ids
+
+
+def test_retriever_returns_empty_when_no_match():
+    registry = PatternRegistry.discover()
+    retriever = PatternRetriever(registry)
+    # Query wildly unrelated
+    hits = retriever.search("quantum entanglement", top_k=3, min_score=5.0)
+    assert hits == []
