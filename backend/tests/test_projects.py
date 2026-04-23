@@ -124,3 +124,30 @@ def test_bom_delete(tmp_path, monkeypatch):
 
         listed = client.get(f"/api/projects/{project_id}/bom").json()
         assert listed == []
+
+
+def test_chat_persists_user_and_assistant_messages(tmp_path, monkeypatch):
+    async def fake_get_response(_messages):
+        return "Hello from the assistant."
+
+    from backend import main as main_mod
+
+    monkeypatch.setattr(main_mod.ai_service, "get_response", fake_get_response)
+
+    with _client(tmp_path, monkeypatch) as client:
+        project_id = client.get("/api/projects").json()[0]["id"]
+
+        resp = client.post(
+            "/api/chat",
+            json={"messages": [{"role": "user", "content": "Hello there"}]},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"content": "Hello from the assistant."}
+
+        messages = client.get(f"/api/projects/{project_id}/messages").json()
+        roles = [m["role"] for m in messages]
+        contents = [m["content"] for m in messages]
+        assert "user" in roles
+        assert "assistant" in roles
+        assert "Hello there" in contents
+        assert "Hello from the assistant." in contents
