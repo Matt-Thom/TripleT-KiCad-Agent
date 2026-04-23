@@ -30,3 +30,27 @@ def test_library_entry_is_a_dataclass_like_object():
     entry = LibraryEntry(name="X", uri="/path.kicad_sym", type="KiCad", descr="d")
     assert entry.name == "X"
     assert entry.uri == "/path.kicad_sym"
+
+
+from backend.services.kicad_libs import LibraryIndex
+
+
+def test_library_index_finds_symbol_by_name(tmp_path):
+    index = LibraryIndex.from_table(FIXTURE)
+    hit = index.find_symbol(library="Device", name="R")
+    assert hit is not None
+    assert hit.library == "Device"
+    assert hit.name == "R"
+    assert hit.pin_count == 2
+
+
+def test_library_index_returns_none_for_missing_symbol():
+    index = LibraryIndex.from_table(FIXTURE)
+    hit = index.find_symbol(library="Device", name="NonExistent")
+    assert hit is None
+
+
+def test_library_index_search_by_keyword_matches_value_or_name():
+    index = LibraryIndex.from_table(FIXTURE)
+    hits = index.search("R")
+    assert any(h.library == "Device" and h.name == "R" for h in hits)
