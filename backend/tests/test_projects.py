@@ -1,4 +1,5 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlmodel import select
 
 from backend.db import init_db, get_session
@@ -12,6 +13,18 @@ def _reset_db_env(tmp_path, monkeypatch, name: str = "test.db"):
     dbmod._engine = None
     dbmod._session_factory = None
     return db_path
+
+
+def _client(tmp_path, monkeypatch, name: str = "app.db") -> TestClient:
+    """Build a TestClient with an isolated SQLite DB.
+
+    Resets the module-level engine/session cache so that the startup hook in
+    ``backend.main`` binds to the per-test database URL.
+    """
+    _reset_db_env(tmp_path, monkeypatch, name=name)
+    from backend.main import app
+
+    return TestClient(app)
 
 
 @pytest.mark.asyncio
@@ -55,3 +68,59 @@ async def test_project_model_roundtrip(tmp_path, monkeypatch):
         assert rows[0].mpn == "LM1117-3.3"
         assert rows[0].quantity == 2
         assert rows[0].project_id == project.id
+
+
+def test_default_project_exists_on_startup(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as client:
+        resp = client.get("/api/projects")
+        assert resp.status_code == 200
+        projects = resp.json()
+        assert any(p["name"] == "Default" for p in projects)
+
+
+def test_bom_add_and_list(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as client:
+        project_id = client.get("/api/projects").json()[0]["id"]
+
+        payload = {
+            "mpn": "LM1117-3.3",
+            "manufacturer": "TI",
+            "description": "LDO 3.3V",
+            "supplier": "LCSC",
+            "supplier_part_number": "C6186",
+            "quantity": 3,
+        }
+        post = client.post(f"/api/projects/{project_id}/bom", json=payload)
+        assert post.status_code == 201, post.text
+        created = post.json()
+        assert created["id"]
+        assert created["quantity"] == 3
+
+        listed = client.get(f"/api/projects/{project_id}/bom")
+        assert listed.status_code == 200
+        body = listed.json()
+        assert len(body) == 1
+        assert body[0]["mpn"] == "LM1117-3.3"
+        assert body[0]["quantity"] == 3
+
+
+def test_bom_delete(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as client:
+        project_id = client.get("/api/projects").json()[0]["id"]
+
+        post = client.post(
+            f"/api/projects/{project_id}/bom",
+            json={
+                "mpn": "NE555",
+                "supplier": "LCSC",
+                "supplier_part_number": "C7593",
+            },
+        )
+        assert post.status_code == 201
+        item_id = post.json()["id"]
+
+        delete = client.delete(f"/api/projects/{project_id}/bom/{item_id}")
+        assert delete.status_code == 204
+
+        listed = client.get(f"/api/projects/{project_id}/bom").json()
+        assert listed == []
