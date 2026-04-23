@@ -41,10 +41,11 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
 *   [x] Model Configuration (Settings).
 *   [x] Downloadable Results.
 
-### Phase 3: The "Symbol Engineer" (Next)
+### Phase 3: The "Symbol Engineer" (Partial — library reuse landed)
 *   [ ] **Datasheet Reading:** Implement PDF text extraction.
 *   [ ] **Pinout Extractor:** AI Tool to return valid Pin Lists.
-*   [ ] **Procedural Symbol Generator:** Python code to draw complex symbols from Pin Lists.
+*   [x] **Procedural Symbol Generator:** Python code to draw complex symbols from Pin Lists.
+*   [x] **Library Reuse:** Schematic generator prefers existing symbols from the user's `sym-lib-table`; falls back to the procedural generator only when no library hit is found.
 
 ### Phase 4: The "Circuit Designer" (Future)
 *   [ ] Algorithmic placement of components.
