@@ -10,7 +10,7 @@ class UsbCInput:
     metadata = PatternMetadata(
         id="usb_c_input",
         title="USB-C input (UFP, 5V only)",
-        tags=["power", "usb", "usb-c", "input"],
+        tags=("power", "usb", "usb-c", "input"),
         description=(
             "USB-C receptacle wired as a UFP. Two 5.1k pull-downs on CC1/CC2 "
             "signal the source to provide 5V. VBUS/GND only — no data."

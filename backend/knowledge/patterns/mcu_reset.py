@@ -10,7 +10,7 @@ class McuReset:
     metadata = PatternMetadata(
         id="mcu_reset",
         title="MCU reset network",
-        tags=["mcu", "reset", "digital"],
+        tags=("mcu", "reset", "digital"),
         description=(
             "Pull-up on NRST to VCC with a 100nF decoupling cap to GND and an "
             "active-low tactile button. Protects against spurious resets and "

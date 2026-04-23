@@ -136,6 +136,10 @@ async def execute_tool(name: str, args: dict):
             filename = os.path.basename(path)
             return f"Pattern applied. [Download {filename}](/api/download/{filename})"
         except ValueError as e:
+            # Unknown pattern id
             return f"Error: {e}"
+        except Exception as e:
+            # Pattern misconfigured — corrupt lib_id, failed save, etc.
+            return f"Error applying pattern '{args['pattern_id']}': {type(e).__name__}: {e}"
 
     return "Error: Tool not found."

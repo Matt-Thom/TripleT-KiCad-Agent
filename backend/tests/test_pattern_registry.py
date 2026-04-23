@@ -5,7 +5,7 @@ def test_pattern_metadata_has_required_fields():
     md = PatternMetadata(
         id="ldo_regulator",
         title="Fixed-output LDO regulator",
-        tags=["power", "regulator", "ldo"],
+        tags=("power", "regulator", "ldo"),
         description="A fixed LDO with input/output decoupling caps.",
         inputs={"ldo_mpn": "STR", "cin": "STR", "cout": "STR"},
     )
@@ -17,7 +17,7 @@ def test_pattern_protocol_has_metadata_and_apply():
     # Structural check — any class with metadata: PatternMetadata and apply(sch, **inputs) is a Pattern.
     class Dummy:
         metadata = PatternMetadata(
-            id="x", title="x", tags=[], description="", inputs={}
+            id="x", title="x", tags=(), description="", inputs={}
         )
 
         def apply(self, sch, **inputs):
@@ -91,7 +91,7 @@ def test_lookup_pattern_tool_returns_matches():
 def test_apply_pattern_tool_returns_download_link(tmp_path, monkeypatch):
     # schematic_service writes to output_dir attribute - so override there
     from backend.services import schematic as sch_mod
-    sch_mod.schematic_service.output_dir = str(tmp_path)
+    monkeypatch.setattr(sch_mod.schematic_service, "output_dir", str(tmp_path))
     result = asyncio.run(execute_tool("apply_pattern", {
         "pattern_id": "i2c_pullups",
         "inputs": {},

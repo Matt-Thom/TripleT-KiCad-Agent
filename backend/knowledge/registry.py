@@ -3,11 +3,16 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import logging
 import pkgutil
 from typing import Optional
 
+from rank_bm25 import BM25Okapi
+
 from backend.knowledge import patterns as _patterns_pkg
 from backend.knowledge.protocol import Pattern, is_pattern
+
+logger = logging.getLogger(__name__)
 
 
 class PatternRegistry:
@@ -18,14 +23,18 @@ class PatternRegistry:
     def discover(cls) -> "PatternRegistry":
         found: list[Pattern] = []
         for modinfo in pkgutil.iter_modules(_patterns_pkg.__path__):
-            mod = importlib.import_module(f"{_patterns_pkg.__name__}.{modinfo.name}")
+            try:
+                mod = importlib.import_module(f"{_patterns_pkg.__name__}.{modinfo.name}")
+            except Exception as exc:
+                logger.warning("Skipping pattern module %s: %s", modinfo.name, exc)
+                continue
             for _, obj in inspect.getmembers(mod, inspect.isclass):
                 if obj.__module__ != mod.__name__:
                     continue
                 try:
                     instance = obj()
                 except TypeError:
-                    continue  # Needs args — not a simple Pattern class
+                    continue
                 if is_pattern(instance):
                     found.append(instance)
         return cls(found)
@@ -35,9 +44,6 @@ class PatternRegistry:
 
     def get(self, pattern_id: str) -> Optional[Pattern]:
         return self._items.get(pattern_id)
-
-
-from rank_bm25 import BM25Okapi
 
 
 class PatternRetriever:

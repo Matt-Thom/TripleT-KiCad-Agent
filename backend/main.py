@@ -132,7 +132,7 @@ async def chat(request: ChatRequest):
             "Be concise, technical, and accurate. Always prioritize safety and best practices.\n\n"
             "TOOL USAGE RULES:\n"
             "1. For sourcing a specific MPN or supplier search, call `search_lcsc`.\n"
-            "2. For generating a schematic of ONE custom component, call `generate_schematic`.\n"
+            "2. CRITICAL: For generating a schematic of ONE custom component, you MUST call `generate_schematic`. Do not describe the steps in text when the user asks to 'generate', 'create', 'make', or 'download'.\n"
             "3. For any STANDARD sub-circuit (LDO, USB-C, I2C pull-ups, reset, decoupling), "
             "FIRST call `lookup_pattern` to see if a verified pattern exists, THEN call "
             "`apply_pattern` with the id. Prefer verified patterns over custom generation."

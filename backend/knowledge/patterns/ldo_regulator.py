@@ -10,7 +10,7 @@ class LdoRegulator:
     metadata = PatternMetadata(
         id="ldo_regulator",
         title="Fixed-output LDO regulator",
-        tags=["power", "regulator", "ldo"],
+        tags=("power", "regulator", "ldo"),
         description=(
             "Standard LDO circuit: input decoupling cap on VIN, output "
             "decoupling cap on VOUT, GND tied together. Use when you need "

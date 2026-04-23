@@ -9,7 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 class PatternMetadata:
     id: str
     title: str
-    tags: list[str]
+    tags: tuple[str, ...]
     description: str
     inputs: dict[str, str] = field(default_factory=dict)  # name -> short-type-label
 

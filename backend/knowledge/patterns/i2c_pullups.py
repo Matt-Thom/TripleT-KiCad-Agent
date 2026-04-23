@@ -10,7 +10,7 @@ class I2cPullups:
     metadata = PatternMetadata(
         id="i2c_pullups",
         title="I2C pull-up resistors",
-        tags=["i2c", "bus", "pullup", "digital"],
+        tags=("i2c", "bus", "pullup", "digital"),
         description=(
             "A pair of pull-up resistors from SDA and SCL to VCC. 4.7k is a safe "
             "default for 3.3V standard-mode; use 2.2k for fast-mode or heavy bus "
