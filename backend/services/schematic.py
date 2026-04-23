@@ -87,6 +87,23 @@ class SchematicService:
             f.write(content)
         return file_path
 
+    def apply_pattern(self, pattern_id: str, inputs: dict) -> str:
+        from backend.knowledge.registry import PatternRegistry
+        import kicad_sch_api as ksa
+
+        registry = PatternRegistry.discover()
+        pat = registry.get(pattern_id)
+        if pat is None:
+            raise ValueError(f"Unknown pattern_id: {pattern_id}")
+
+        sch = ksa.create_schematic(pattern_id)
+        pat.apply(sch, **inputs)
+
+        safe = _sanitize_filename(pattern_id)
+        file_path = os.path.join(self.output_dir, f"{safe}.kicad_sch")
+        sch.save(file_path)
+        return file_path
+
     @staticmethod
     def _render_procedural(*, mpn: str, pins: list[PinSpec]) -> str:
         symbol_sexp = build_procedural_symbol(name=mpn, pins=pins)

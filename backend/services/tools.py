@@ -24,6 +24,46 @@ tools = [
     {
         "type": "function",
         "function": {
+            "name": "lookup_pattern",
+            "description": (
+                "Search the library of verified circuit patterns (LDO, USB-C, I2C pull-ups, "
+                "MCU reset, etc.) by natural-language query. Call this BEFORE apply_pattern "
+                "whenever the user asks for a standard sub-circuit."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What the user wants (e.g. '3.3V regulator')."}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "apply_pattern",
+            "description": (
+                "Apply a known circuit pattern by id, using inputs discovered via lookup_pattern. "
+                "Returns a downloadable KiCad 9 schematic."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern_id": {"type": "string", "description": "Pattern id from lookup_pattern."},
+                    "inputs": {
+                        "type": "object",
+                        "description": "Pattern-specific inputs (see lookup_pattern result for keys).",
+                        "additionalProperties": True
+                    }
+                },
+                "required": ["pattern_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_schematic",
             "description": "Generate a KiCad 9 schematic file for a specific component. Use this when the user wants to 'create', 'make', or 'download' a schematic for a part.",
             "parameters": {
@@ -72,4 +112,34 @@ async def execute_tool(name: str, args: dict):
         download_url = f"http://localhost:8000/api/download/{filename}"
         return f"Schematic generated. Download Link: [Download {args['mpn']} Schematic]({download_url})"
         
+    elif name == "lookup_pattern":
+        from backend.knowledge.registry import PatternRegistry, PatternRetriever
+        registry = PatternRegistry.discover()
+        retriever = PatternRetriever(registry)
+        hits = retriever.search(args["query"], top_k=3)
+        summary = [
+            {
+                "id": p.metadata.id,
+                "title": p.metadata.title,
+                "description": p.metadata.description,
+                "inputs": p.metadata.inputs,
+            }
+            for p in hits
+        ]
+        return str(summary) if summary else "No matching patterns. Suggest using search_lcsc and generate_schematic instead."
+
+    elif name == "apply_pattern":
+        try:
+            path = schematic_service.apply_pattern(
+                args["pattern_id"], args.get("inputs", {})
+            )
+            filename = os.path.basename(path)
+            return f"Pattern applied. [Download {filename}](/api/download/{filename})"
+        except ValueError as e:
+            # Unknown pattern id
+            return f"Error: {e}"
+        except Exception as e:
+            # Pattern misconfigured — corrupt lib_id, failed save, etc.
+            return f"Error applying pattern '{args['pattern_id']}': {type(e).__name__}: {e}"
+
     return "Error: Tool not found."

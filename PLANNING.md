@@ -41,6 +41,11 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
 *   [x] Model Configuration (Settings).
 *   [x] Downloadable Results.
 
+### Phase 2.5: Pattern Library [COMPLETED]
+*   [x] Executable patterns with metadata.
+*   [x] BM25 retrieval + lookup_pattern / apply_pattern tools.
+*   [x] Seed patterns: LDO, USB-C input, I2C pull-ups, MCU reset.
+
 ### Phase 3: The "Symbol Engineer" (Partial — library reuse landed)
 *   [ ] **Datasheet Reading:** Implement PDF text extraction.
 *   [ ] **Pinout Extractor:** AI Tool to return valid Pin Lists.
