@@ -9,6 +9,7 @@ interface SettingsData {
     default_model: string;
     kicad_symbol_dir: string;
     kicad_footprint_dir: string;
+    kicad_sym_lib_table?: string;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -18,7 +19,8 @@ export const SettingsPage: React.FC = () => {
         gemini_api_key: '',
         default_model: 'gemini/gemini-pro',
         kicad_symbol_dir: '',
-        kicad_footprint_dir: ''
+        kicad_footprint_dir: '',
+        kicad_sym_lib_table: ''
     });
     const [status, setStatus] = useState('');
 
@@ -34,7 +36,8 @@ export const SettingsPage: React.FC = () => {
                     gemini_api_key: data.gemini_api_key || '',
                     default_model: data.default_model || 'gemini/gemini-pro',
                     kicad_symbol_dir: data.kicad_symbol_dir || '',
-                    kicad_footprint_dir: data.kicad_footprint_dir || ''
+                    kicad_footprint_dir: data.kicad_footprint_dir || '',
+                    kicad_sym_lib_table: data.kicad_sym_lib_table || ''
                 });
             } catch (error) {
                 console.error("Failed to load settings", error);
@@ -87,6 +90,17 @@ export const SettingsPage: React.FC = () => {
                                 value={settings.kicad_footprint_dir}
                                 onChange={handleChange}
                                 placeholder="C:\Program Files\KiCad\9.0\share\kicad\footprints"
+                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">sym-lib-table path (optional)</label>
+                            <input
+                                type="text"
+                                name="kicad_sym_lib_table"
+                                value={settings.kicad_sym_lib_table || ''}
+                                onChange={handleChange}
+                                placeholder="~/.config/kicad/9.0/sym-lib-table"
                                 className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
