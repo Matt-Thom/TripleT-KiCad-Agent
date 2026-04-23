@@ -1,36 +1,52 @@
-"""
-Pattern: Fixed LDO Regulator Circuit
-Description: A standard Low-Dropout Regulator circuit with input and output decoupling capacitors.
-Target: KiCad 9.0
-"""
+"""Pattern: Fixed-output LDO regulator with input/output decoupling caps."""
+from __future__ import annotations
 
-from kicad_sch_api import Schematic, Component
+import kicad_sch_api as ksa
 
-def generate_ldo_circuit(
-    output_path: str,
-    ldo_mpn: str,
-    cin_value: str = "10uF",
-    cout_value: str = "10uF"
-):
-    sch = Schematic()
-    sch.title = f"LDO Regulator ({ldo_mpn})"
-    
-    # In a real scenario, we'd search the library for these symbols.
-    # For this pattern, we demonstrate the logical structure.
-    
-    # 1. Add LDO Symbol
-    # ldo = sch.add_component(lib="Device", symbol="L7805", pos=(100, 100))
-    # ldo.value = ldo_mpn
-    
-    # 2. Add Capacitors
-    # c_in = sch.add_component(lib="Device", symbol="C", pos=(80, 120))
-    # c_in.value = cin_value
-    
-    # c_out = sch.add_component(lib="Device", symbol="C", pos=(120, 120))
-    # c_out.value = cout_value
-    
-    # 3. Add Wires/Nets
-    # sch.add_wire(ldo.pin(1), c_in.pin(1))
-    
-    sch.save(output_path)
-    return output_path
+from backend.knowledge.protocol import PatternMetadata
+
+
+class LdoRegulator:
+    metadata = PatternMetadata(
+        id="ldo_regulator",
+        title="Fixed-output LDO regulator",
+        tags=["power", "regulator", "ldo"],
+        description=(
+            "Standard LDO circuit: input decoupling cap on VIN, output "
+            "decoupling cap on VOUT, GND tied together. Use when you need "
+            "a lower fixed DC rail from a higher DC input."
+        ),
+        inputs={
+            "ldo_mpn": "MPN of the LDO, e.g. AMS1117-3.3",
+            "cin": "Input cap value (default 10uF)",
+            "cout": "Output cap value (default 10uF)",
+        },
+    )
+
+    def apply(
+        self,
+        sch: ksa.Schematic,
+        *,
+        ldo_mpn: str,
+        cin: str = "10uF",
+        cout: str = "10uF",
+    ) -> ksa.Schematic:
+        sch.components.add(
+            lib_id="Regulator_Linear:AMS1117-3.3",
+            reference="U1",
+            value=ldo_mpn,
+            position=(100, 100),
+        )
+        sch.components.add(
+            lib_id="Device:C",
+            reference="C1",
+            value=cin,
+            position=(80, 110),
+        )
+        sch.components.add(
+            lib_id="Device:C",
+            reference="C2",
+            value=cout,
+            position=(120, 110),
+        )
+        return sch
