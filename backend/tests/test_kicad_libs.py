@@ -1,5 +1,5 @@
 from pathlib import Path
-from backend.services.kicad_libs import parse_sym_lib_table, LibraryEntry
+from backend.services.kicad_libs import parse_sym_lib_table, LibraryEntry, LibraryIndex
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sym-lib-table"
 
@@ -30,9 +30,6 @@ def test_library_entry_is_a_dataclass_like_object():
     entry = LibraryEntry(name="X", uri="/path.kicad_sym", type="KiCad", descr="d")
     assert entry.name == "X"
     assert entry.uri == "/path.kicad_sym"
-
-
-from backend.services.kicad_libs import LibraryIndex
 
 
 def test_library_index_finds_symbol_by_name(tmp_path):

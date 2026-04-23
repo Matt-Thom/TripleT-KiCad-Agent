@@ -26,7 +26,13 @@ class PinSpec:
 
 
 def _escape(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
+    return (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\x00", "")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
 
 
 def build_procedural_symbol(*, name: str, pins: list[PinSpec]) -> str:

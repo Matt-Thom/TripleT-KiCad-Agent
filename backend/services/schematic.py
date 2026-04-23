@@ -19,7 +19,13 @@ def _sanitize_filename(name: str) -> str:
 
 
 def _escape_sexp(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
+    return (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\x00", "")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
 
 
 class SchematicService:
