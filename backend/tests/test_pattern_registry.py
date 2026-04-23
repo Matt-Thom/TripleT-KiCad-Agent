@@ -77,3 +77,23 @@ def test_retriever_returns_empty_when_no_match():
     # Query wildly unrelated
     hits = retriever.search("quantum entanglement", top_k=3, min_score=5.0)
     assert hits == []
+
+
+import asyncio
+from backend.services.tools import execute_tool
+
+
+def test_lookup_pattern_tool_returns_matches():
+    result = asyncio.run(execute_tool("lookup_pattern", {"query": "LDO regulator"}))
+    assert "ldo_regulator" in result
+
+
+def test_apply_pattern_tool_returns_download_link(tmp_path, monkeypatch):
+    # schematic_service writes to output_dir attribute - so override there
+    from backend.services import schematic as sch_mod
+    sch_mod.schematic_service.output_dir = str(tmp_path)
+    result = asyncio.run(execute_tool("apply_pattern", {
+        "pattern_id": "i2c_pullups",
+        "inputs": {},
+    }))
+    assert "Download" in result or "/api/download/" in result
