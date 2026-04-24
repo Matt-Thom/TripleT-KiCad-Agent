@@ -46,6 +46,17 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
 *   [x] BM25 retrieval + lookup_pattern / apply_pattern tools.
 *   [x] Seed patterns: LDO, USB-C input, I2C pull-ups, MCU reset.
 
+### Phase 2.6: Project Persistence [COMPLETED]
+*   [x] Async SQLite via SQLModel (`backend/db.py`, `data/triplet.db`).
+*   [x] `Project`, `BomItem`, `Message` tables (`backend/models/project.py`).
+*   [x] REST endpoints for projects, BOM, and messages (`backend/routers/projects.py`):
+    *   `GET/POST /api/projects`
+    *   `GET/POST/DELETE /api/projects/{id}/bom[/{item_id}]`
+    *   `GET/POST /api/projects/{id}/messages`
+*   [x] Default project auto-created on first call, preserving the single-page UX.
+*   [x] Frontend `BOMContext` now fetches and mutates through `/api/projects/{id}/bom`; a browser refresh keeps the BOM.
+*   [x] `/api/chat` persists both the last user message and the assistant reply on the default project.
+
 ### Phase 3: The "Symbol Engineer" [COMPLETED]
 *   [x] **Datasheet Reading:** `backend/services/datasheet.py` fetches PDFs via `httpx` and extracts text with `pdfplumber`.
 *   [x] **Pinout Extractor:** `extract_pinout` AI tool runs a dedicated LLM call to turn datasheet text into a validated `PinSpec[]`. Drops pins with unknown electrical types, raises on malformed output.
