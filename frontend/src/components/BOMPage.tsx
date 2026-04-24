@@ -3,19 +3,20 @@ import { useBOM } from '../context/BOMContext';
 import { Trash2, Download } from 'lucide-react';
 
 export const BOMPage: React.FC = () => {
-    const { items, removeFromBOM } = useBOM();
+    const { items, removeFromBOM, loading, error } = useBOM();
 
     const handleExportCSV = () => {
-        const headers = ["MPN", "Supplier", "Part Number", "Description", "Price", "Stock"];
+        const headers = ["MPN", "Supplier", "Part Number", "Description", "Price", "Stock", "Quantity"];
         const rows = items.map(p => [
             p.mpn,
             p.supplier,
             p.supplier_part_number,
-            `"${p.description}"`, // Escape quotes
-            p.price.toString(),
-            p.stock.toString()
+            `"${p.description}"`,
+            (p.price ?? 0).toString(),
+            (p.stock ?? 0).toString(),
+            p.quantity.toString(),
         ]);
-        
+
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -32,7 +33,7 @@ export const BOMPage: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">Bill of Materials (BOM)</h2>
                 {items.length > 0 && (
-                    <button 
+                    <button
                         onClick={handleExportCSV}
                         className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
                     >
@@ -41,7 +42,15 @@ export const BOMPage: React.FC = () => {
                 )}
             </div>
 
-            {items.length === 0 ? (
+            {error && (
+                <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
+                    {error}
+                </div>
+            )}
+
+            {loading ? (
+                <div className="text-center text-gray-500 py-10">Loading BOM…</div>
+            ) : items.length === 0 ? (
                 <div className="text-center text-gray-500 py-10">
                     Your BOM is empty. Search for parts to add them.
                 </div>
@@ -52,6 +61,7 @@ export const BOMPage: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MPN</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier P/N</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -59,14 +69,15 @@ export const BOMPage: React.FC = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {items.map((part) => (
-                                <tr key={part.supplier_part_number}>
+                                <tr key={part.id}>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{part.mpn}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.supplier_part_number}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.stock}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${part.price.toFixed(4)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.quantity}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.stock ?? 0}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${(part.price ?? 0).toFixed(4)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button 
-                                            onClick={() => removeFromBOM(part.mpn)}
+                                        <button
+                                            onClick={() => removeFromBOM(part.id)}
                                             className="text-red-600 hover:text-red-900"
                                             title="Remove"
                                         >
