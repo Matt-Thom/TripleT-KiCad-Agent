@@ -96,11 +96,11 @@ export const PartSearch: React.FC = () => {
                                 <p className="text-sm text-gray-600">{part.description}</p>
                                 <div className="text-xs text-gray-500 mt-1">
                                     Supplier: <span className="font-semibold">{part.supplier}</span> | 
-                                    Stock: <span className="font-semibold">{part.stock}</span>
+                                    Stock: <span className="font-semibold">{part.stock ?? 0}</span>
                                 </div>
                             </div>
                             <div className="text-right flex flex-col gap-2">
-                                <div className="text-xl font-bold text-green-600">${part.price.toFixed(4)}</div>
+                                <div className="text-xl font-bold text-green-600">${(part.price ?? 0).toFixed(4)}</div>
                                 <button 
                                     onClick={() => handleGenerateSchematic(part.mpn, part.supplier_part_number)}
                                     className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200"

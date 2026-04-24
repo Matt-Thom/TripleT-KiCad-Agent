@@ -1,0 +1,54 @@
+"""Project persistence models.
+
+A ``Project`` bundles a BOM (``BomItem``) and a chat history (``Message``).
+The first-run UX creates a single "default" project so the single-page UI keeps
+working until multi-project support lands.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Column
+from sqlalchemy.types import JSON
+from sqlmodel import Field, SQLModel
+
+
+class Project(SQLModel, table=True):
+    __tablename__ = "project"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class BomItem(SQLModel, table=True):
+    __tablename__ = "bom_item"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True, nullable=False)
+
+    mpn: str = Field(index=True)
+    manufacturer: str = ""
+    description: str = ""
+    price: Optional[float] = None
+    stock: Optional[int] = None
+    supplier: str = "LCSC"
+    supplier_part_number: str = ""
+    datasheet_url: Optional[str] = None
+    attributes: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    quantity: int = 1
+
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class Message(SQLModel, table=True):
+    __tablename__ = "message"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True, nullable=False)
+
+    role: str
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)

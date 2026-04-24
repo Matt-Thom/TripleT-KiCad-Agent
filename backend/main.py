@@ -6,6 +6,10 @@ from backend.services.lcsc import lcsc_service, Part
 from backend.services.schematic import schematic_service
 from backend.services.ai import ai_service
 from backend.routers import settings
+from backend.routers import projects as projects_router
+from backend.routers.projects import _ensure_default_project
+from backend.db import init_db, get_session
+from backend.models.project import Message
 from typing import List
 import os
 import logging
@@ -30,6 +34,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include Routers
 app.include_router(settings.router, prefix="/api")
+app.include_router(projects_router.router, prefix="/api")
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    await init_db()
 
 # Models for Chat
 class ChatMessage(BaseModel):
@@ -115,6 +125,13 @@ async def download_file(filename: str):
         )
     raise HTTPException(status_code=404, detail="File not found")
 
+async def _default_project_id() -> int:
+    async with get_session() as session:
+        project = await _ensure_default_project(session)
+        assert project.id is not None
+        return project.id
+
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
@@ -122,7 +139,7 @@ async def chat(request: ChatRequest):
     """
     # Convert Pydantic models to list of dicts for LiteLLM
     messages = [m.model_dump() for m in request.messages]
-    
+
     # We should add a System Prompt here to ground the AI in KiCad 9 context
     system_prompt = {
         "role": "system",
@@ -138,10 +155,37 @@ async def chat(request: ChatRequest):
             "`apply_pattern` with the id. Prefer verified patterns over custom generation."
         )
     }
-    
+
     # Prepend system prompt if not already present
     if not any(m["role"] == "system" for m in messages):
         messages.insert(0, system_prompt)
 
     response_text = await ai_service.get_response(messages)
+
+    # Persist the last user message and assistant reply to the default project.
+    try:
+        project_id = await _default_project_id()
+        last_user = next(
+            (m for m in reversed(request.messages) if m.role == "user"), None
+        )
+        async with get_session() as session:
+            if last_user is not None and last_user.content:
+                session.add(
+                    Message(
+                        project_id=project_id,
+                        role="user",
+                        content=last_user.content,
+                    )
+                )
+            session.add(
+                Message(
+                    project_id=project_id,
+                    role="assistant",
+                    content=response_text or "",
+                )
+            )
+            await session.commit()
+    except Exception as exc:  # pragma: no cover - persistence must not break chat
+        logger.warning(f"Failed to persist chat messages: {exc}")
+
     return {"content": response_text}
