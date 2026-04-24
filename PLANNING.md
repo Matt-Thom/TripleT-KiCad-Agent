@@ -46,11 +46,12 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
 *   [x] BM25 retrieval + lookup_pattern / apply_pattern tools.
 *   [x] Seed patterns: LDO, USB-C input, I2C pull-ups, MCU reset.
 
-### Phase 3: The "Symbol Engineer" (Partial — library reuse landed)
-*   [ ] **Datasheet Reading:** Implement PDF text extraction.
-*   [ ] **Pinout Extractor:** AI Tool to return valid Pin Lists.
+### Phase 3: The "Symbol Engineer" [COMPLETED]
+*   [x] **Datasheet Reading:** `backend/services/datasheet.py` fetches PDFs via `httpx` and extracts text with `pdfplumber`.
+*   [x] **Pinout Extractor:** `extract_pinout` AI tool runs a dedicated LLM call to turn datasheet text into a validated `PinSpec[]`. Drops pins with unknown electrical types, raises on malformed output.
 *   [x] **Procedural Symbol Generator:** Python code to draw complex symbols from Pin Lists.
 *   [x] **Library Reuse:** Schematic generator prefers existing symbols from the user's `sym-lib-table`; falls back to the procedural generator only when no library hit is found.
+*   [x] **Chain to generate_schematic:** `generate_schematic` accepts an optional `pins` array so the agent can wire `search_lcsc` → `extract_pinout` → `generate_schematic(..., pins=...)`.
 
 ### Phase 4: The "Circuit Designer" (Future)
 *   [ ] Algorithmic placement of components.
