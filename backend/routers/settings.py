@@ -10,6 +10,10 @@ router = APIRouter()
 SETTINGS_FILE = ".env" 
 
 def load_settings():
+    try:
+        port_val = int(os.getenv("PORT", "8080"))
+    except ValueError:
+        port_val = 8080
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
@@ -17,7 +21,8 @@ def load_settings():
         default_model=os.getenv("DEFAULT_AI_MODEL", "gemini/gemini-pro"),
         kicad_symbol_dir=os.getenv("KICAD_SYMBOL_DIR", ""),
         kicad_footprint_dir=os.getenv("KICAD_FOOTPRINT_DIR", ""),
-        kicad_sym_lib_table=os.getenv("KICAD_SYM_LIB_TABLE", "")
+        kicad_sym_lib_table=os.getenv("KICAD_SYM_LIB_TABLE", ""),
+        port=port_val
     )
 
 @router.get("/settings", response_model=Settings)
@@ -47,7 +52,8 @@ def update_settings(settings: Settings):
         os.environ["KICAD_FOOTPRINT_DIR"] = settings.kicad_footprint_dir
     if settings.kicad_sym_lib_table:
         os.environ["KICAD_SYM_LIB_TABLE"] = settings.kicad_sym_lib_table
-
+    
+    os.environ["PORT"] = str(settings.port)
     os.environ["DEFAULT_AI_MODEL"] = settings.default_model
 
     # Persist to .env file (Basic implementation)
@@ -64,6 +70,9 @@ DEFAULT_AI_MODEL='{settings.default_model}'
 KICAD_SYMBOL_DIR='{settings.kicad_symbol_dir or ""}'
 KICAD_FOOTPRINT_DIR='{settings.kicad_footprint_dir or ""}'
 KICAD_SYM_LIB_TABLE='{settings.kicad_sym_lib_table or ""}'
+
+# Server Configuration
+PORT='{settings.port or 8080}'
 """
         with open(SETTINGS_FILE, "w") as f:
             f.write(env_content)

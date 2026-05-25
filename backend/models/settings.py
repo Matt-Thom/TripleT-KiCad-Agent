@@ -10,3 +10,4 @@ class Settings(BaseModel):
     kicad_symbol_dir: Optional[str] = None
     kicad_footprint_dir: Optional[str] = None
     kicad_sym_lib_table: Optional[str] = None
+    port: int = 8080

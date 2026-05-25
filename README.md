@@ -77,7 +77,7 @@ The authoritative roadmap lives in [`PLANNING.md`](./PLANNING.md).
 | `frontend/src/components/SettingsPage.tsx` | Form bound to `/api/settings`. |
 | `frontend/src/context/BOMContext.tsx` | In-memory BOM state. |
 
-The frontend has no Vite proxy — API calls hardcode `http://localhost:8000`.
+The frontend uses a Vite proxy configured to target the backend port dynamically loaded from `.env` (default is port 8080).
 
 ## Running locally
 
@@ -86,7 +86,7 @@ Backend:
 ```bash
 uv sync
 cp .env.example .env   # add at least one provider API key
-uv run uvicorn backend.main:app --reload
+uv run python -m backend.main
 ```
 
 Frontend (in a second terminal):

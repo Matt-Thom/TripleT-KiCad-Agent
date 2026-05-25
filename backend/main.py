@@ -189,3 +189,11 @@ async def chat(request: ChatRequest):
         logger.warning(f"Failed to persist chat messages: {exc}")
 
     return {"content": response_text}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    from dotenv import load_dotenv
+    load_dotenv()
+    port = int(os.getenv("PORT", "8080"))
+    uvicorn.run("backend.main:app", host="127.0.0.1", port=port, reload=True)
