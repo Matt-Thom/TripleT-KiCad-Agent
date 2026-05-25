@@ -1,5 +1,10 @@
+import json
 import os
+
+from backend.services.datasheet import DatasheetError
 from backend.services.lcsc import lcsc_service
+from backend.services.pinout import PinoutExtractionError, extract_pinout
+from backend.services.procedural_symbol import VALID_PIN_TYPES, PinSpec
 from backend.services.schematic import schematic_service
 
 # Tool Definitions for LiteLLM / OpenAI format
@@ -64,8 +69,35 @@ tools = [
     {
         "type": "function",
         "function": {
+            "name": "extract_pinout",
+            "description": (
+                "Fetch a datasheet PDF and extract the component's pinout as a structured "
+                "list of pins. Use this BEFORE generate_schematic when the user wants a real "
+                "multi-pin symbol (not a placeholder) and a datasheet URL is available — "
+                "typically from the `datasheet_url` field of a search_lcsc result. "
+                "Returns pins you can pass directly to generate_schematic via the `pins` arg."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "datasheet_url": {
+                        "type": "string",
+                        "description": "URL of the datasheet PDF."
+                    },
+                    "mpn": {
+                        "type": "string",
+                        "description": "Manufacturer part number, used as context for the extractor."
+                    }
+                },
+                "required": ["datasheet_url", "mpn"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_schematic",
-            "description": "Generate a KiCad 9 schematic file for a specific component. Use this when the user wants to 'create', 'make', or 'download' a schematic for a part.",
+            "description": "Generate a KiCad 9 schematic file for a specific component. Use this when the user wants to 'create', 'make', or 'download' a schematic for a part. Pass `pins` (from extract_pinout) to get a real multi-pin symbol; omit to fall back to library reuse or a 1-pin placeholder.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -80,13 +112,56 @@ tools = [
                     "description": {
                         "type": "string",
                         "description": "Optional part description to improve library-symbol lookup."
-                    }
+                    },
+                    "pins": {
+                        "type": "array",
+                        "description": (
+                            "Optional pin list. Usually obtained by calling extract_pinout first. "
+                            "If provided, a procedural symbol is drawn from these pins instead of "
+                            "using a library symbol or placeholder."
+                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "number": {"type": "string"},
+                                "name": {"type": "string"},
+                                "type": {
+                                    "type": "string",
+                                    "enum": sorted(VALID_PIN_TYPES),
+                                },
+                            },
+                            "required": ["number", "name", "type"],
+                        },
+                    },
                 },
                 "required": ["mpn", "supplier_id"]
             }
         }
     }
 ]
+
+
+def _coerce_pins(raw: object) -> list[PinSpec] | None:
+    if not raw:
+        return None
+    if not isinstance(raw, list):
+        return None
+    pins: list[PinSpec] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            pins.append(
+                PinSpec(
+                    number=str(entry["number"]),
+                    name=str(entry["name"]),
+                    type=str(entry["type"]).lower(),
+                )
+            )
+        except (KeyError, ValueError):
+            continue
+    return pins or None
+
 
 async def execute_tool(name: str, args: dict):
     """
@@ -102,16 +177,18 @@ async def execute_tool(name: str, args: dict):
             return str([p.model_dump() for p in results[:3]])
         except Exception as e:
             return f"Error searching for '{args['query']}': {str(e)}"
-        
+
     elif name == "generate_schematic":
+        pins = _coerce_pins(args.get("pins"))
         path = schematic_service.generate_single_component_sch(
             args["mpn"], args["supplier_id"],
             description=args.get("description", ""),
+            pins=pins,
         )
         filename = os.path.basename(path)
         download_url = f"http://localhost:8000/api/download/{filename}"
         return f"Schematic generated. Download Link: [Download {args['mpn']} Schematic]({download_url})"
-        
+
     elif name == "lookup_pattern":
         from backend.knowledge.registry import PatternRegistry, PatternRetriever
         registry = PatternRegistry.discover()
@@ -141,5 +218,18 @@ async def execute_tool(name: str, args: dict):
         except Exception as e:
             # Pattern misconfigured — corrupt lib_id, failed save, etc.
             return f"Error applying pattern '{args['pattern_id']}': {type(e).__name__}: {e}"
+
+    elif name == "extract_pinout":
+        try:
+            pins = await extract_pinout(args["datasheet_url"], args["mpn"])
+        except DatasheetError as e:
+            return f"Error fetching datasheet: {e}"
+        except PinoutExtractionError as e:
+            return f"Error extracting pinout: {e}"
+        except Exception as e:
+            return f"Error in extract_pinout: {type(e).__name__}: {e}"
+        return json.dumps(
+            [{"number": p.number, "name": p.name, "type": p.type} for p in pins]
+        )
 
     return "Error: Tool not found."
