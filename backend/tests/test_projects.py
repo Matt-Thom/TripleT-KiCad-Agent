@@ -126,6 +126,44 @@ def test_bom_delete(tmp_path, monkeypatch):
         assert listed == []
 
 
+def test_bom_update_quantity(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as client:
+        project_id = client.get("/api/projects").json()[0]["id"]
+
+        post = client.post(
+            f"/api/projects/{project_id}/bom",
+            json={
+                "mpn": "NE555",
+                "supplier": "LCSC",
+                "supplier_part_number": "C7593",
+                "quantity": 1,
+            },
+        )
+        assert post.status_code == 201
+        item_id = post.json()["id"]
+
+        # Update quantity
+        put = client.put(
+            f"/api/projects/{project_id}/bom/{item_id}",
+            json={"quantity": 5},
+        )
+        assert put.status_code == 200, put.text
+        updated = put.json()
+        assert updated["quantity"] == 5
+
+        # Check listed quantity
+        listed = client.get(f"/api/projects/{project_id}/bom").json()
+        assert len(listed) == 1
+        assert listed[0]["quantity"] == 5
+
+        # Try setting invalid quantity
+        put_invalid = client.put(
+            f"/api/projects/{project_id}/bom/{item_id}",
+            json={"quantity": 0},
+        )
+        assert put_invalid.status_code == 422
+
+
 def test_chat_persists_user_and_assistant_messages(tmp_path, monkeypatch):
     async def fake_get_response(_messages):
         return "Hello from the assistant."

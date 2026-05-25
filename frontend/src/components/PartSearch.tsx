@@ -4,6 +4,8 @@ import type { Part } from '../types/Part';
 import { Search, Loader2, Check } from 'lucide-react';
 import { useBOM } from '../context/BOMContext';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
+
 export const PartSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Part[]>([]);
@@ -16,7 +18,7 @@ export const PartSearch: React.FC = () => {
     const handleGenerateSchematic = async (mpn: string, supplierId: string) => {
         try {
             const response = await axios.post(
-                `http://localhost:8000/api/generate/schematic`, 
+                `${API_BASE}/api/generate/schematic`, 
                 null, 
                 {
                     params: { mpn, supplier_id: supplierId },
@@ -47,7 +49,7 @@ export const PartSearch: React.FC = () => {
         setResults([]);
 
         try {
-            const response = await axios.get<Part[]>(`http://localhost:8000/api/search/lcsc`, {
+            const response = await axios.get<Part[]>(`${API_BASE}/api/search/lcsc`, {
                 params: { q: query }
             });
             setResults(response.data);

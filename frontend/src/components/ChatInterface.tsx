@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { useBOM } from '../context/BOMContext';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -62,7 +64,7 @@ export const ChatInterface: React.FC = () => {
         content: `Current BOM Context: The user has the following parts in their Bill of Materials: ${JSON.stringify(bomItems.map(i => ({ mpn: i.mpn, desc: i.description })))}. Use this context if they ask about 'my parts' or 'the BOM'.`
       } : null;
 
-      const apiMessages = [...messages, userMessage].map(m => ({
+      const apiMessages: { role: string; content: string }[] = [...messages, userMessage].map(m => ({
         role: m.role,
         content: m.content
       }));
@@ -72,7 +74,7 @@ export const ChatInterface: React.FC = () => {
         apiMessages.splice(apiMessages.length - 1, 0, bomContextMessage);
       }
 
-      const response = await axios.post('http://localhost:8000/api/chat', {
+      const response = await axios.post(`${API_BASE}/api/chat`, {
         messages: apiMessages
       });
       console.log('Received response from backend:', response.data);

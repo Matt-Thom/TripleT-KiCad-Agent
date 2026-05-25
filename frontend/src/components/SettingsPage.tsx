@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Save } from 'lucide-react';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
+
 interface SettingsData {
     openai_api_key: string;
     anthropic_api_key: string;
@@ -27,7 +29,7 @@ export const SettingsPage: React.FC = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const response = await axios.get('http://localhost:8000/api/settings');
+                const response = await axios.get(`${API_BASE}/api/settings`);
                 // Ensure no nulls are set to inputs
                 const data = response.data;
                 setSettings({
@@ -54,7 +56,7 @@ export const SettingsPage: React.FC = () => {
         e.preventDefault();
         setStatus('Saving...');
         try {
-            await axios.post('http://localhost:8000/api/settings', settings);
+            await axios.post(`${API_BASE}/api/settings`, settings);
             setStatus('Settings saved successfully!');
             setTimeout(() => setStatus(''), 3000);
         } catch (error) {

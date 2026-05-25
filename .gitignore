@@ -16,6 +16,10 @@ generated_schematics/
 # IDEs
 .vscode/
 .idea/
+.antigravitycli/
+.obsidian/
+.claude/
+.jules/
 
 # OS
 .DS_Store

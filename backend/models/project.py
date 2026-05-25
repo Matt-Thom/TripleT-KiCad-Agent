@@ -52,3 +52,26 @@ class Message(SQLModel, table=True):
     role: str
     content: str
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class BlockDiagram(SQLModel, table=True):
+    __tablename__ = "block_diagram"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", unique=True, index=True, nullable=False)
+
+    blocks: list = Field(default_factory=list, sa_column=Column(JSON))
+    connections: list = Field(default_factory=list, sa_column=Column(JSON))
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class SchematicIR(SQLModel, table=True):
+    __tablename__ = "schematic_ir"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", unique=True, index=True, nullable=False)
+
+    components: list = Field(default_factory=list, sa_column=Column(JSON))
+    nets: list = Field(default_factory=list, sa_column=Column(JSON))
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useBOM } from '../context/BOMContext';
-import { Trash2, Download } from 'lucide-react';
+import { Trash2, Download, Minus, Plus } from 'lucide-react';
 
 export const BOMPage: React.FC = () => {
-    const { items, removeFromBOM, loading, error } = useBOM();
+    const { items, removeFromBOM, updateQuantity, loading, error } = useBOM();
 
     const handleExportCSV = () => {
         const headers = ["MPN", "Supplier", "Part Number", "Description", "Price", "Stock", "Quantity"];
@@ -72,7 +72,35 @@ export const BOMPage: React.FC = () => {
                                 <tr key={part.id}>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{part.mpn}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.supplier_part_number}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.quantity}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <button
+                                                onClick={() => void updateQuantity(part.id, part.quantity - 1)}
+                                                disabled={part.quantity <= 1}
+                                                className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-l hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 transition-colors"
+                                            >
+                                                <Minus className="h-3 w-3" />
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={part.quantity}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value, 10);
+                                                    if (!isNaN(val) && val >= 1) {
+                                                        void updateQuantity(part.id, val);
+                                                    }
+                                                }}
+                                                className="w-12 h-8 text-center border-t border-b border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            />
+                                            <button
+                                                onClick={() => void updateQuantity(part.id, part.quantity + 1)}
+                                                className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-r hover:bg-gray-50 text-gray-600 transition-colors"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500">{part.stock ?? 0}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${(part.price ?? 0).toFixed(4)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

@@ -33,7 +33,11 @@ class SymbolResolver:
 
         # 2. Try the library index.
         if self._index is not None:
-            candidates = self._index.search(mpn) or self._index.search(description)
+            candidates = []
+            if mpn and mpn.strip():
+                candidates = self._index.search(mpn)
+            if not candidates and description and description.strip():
+                candidates = self._index.search(description)
             if candidates:
                 best = candidates[0]
                 return ResolvedSymbol(

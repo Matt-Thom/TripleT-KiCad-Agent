@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import axios from 'axios';
 import type { Part } from '../types/Part';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
 export interface BomRecord extends Part {
     id: number;
@@ -25,6 +25,7 @@ interface BOMContextType {
     error: string | null;
     addToBOM: (part: Part) => Promise<void>;
     removeFromBOM: (itemId: number) => Promise<void>;
+    updateQuantity: (itemId: number, newQty: number) => Promise<void>;
     refresh: () => Promise<void>;
 }
 
@@ -109,6 +110,24 @@ export const BOMProvider = ({ children }: { children: ReactNode }) => {
         [projectId, fetchBom],
     );
 
+    const updateQuantity = useCallback(
+        async (itemId: number, newQty: number) => {
+            if (projectId === null) return;
+            if (newQty < 1) return;
+            try {
+                await axios.put(
+                    `${API_BASE}/api/projects/${projectId}/bom/${itemId}`,
+                    { quantity: newQty },
+                );
+                await fetchBom(projectId);
+            } catch (err) {
+                console.error('Failed to update BOM item quantity', err);
+                setError('Failed to update BOM item quantity');
+            }
+        },
+        [projectId, fetchBom],
+    );
+
     const refresh = useCallback(async () => {
         if (projectId !== null) {
             await fetchBom(projectId);
@@ -117,7 +136,16 @@ export const BOMProvider = ({ children }: { children: ReactNode }) => {
 
     return (
         <BOMContext.Provider
-            value={{ items, projectId, loading, error, addToBOM, removeFromBOM, refresh }}
+            value={{
+                items,
+                projectId,
+                loading,
+                error,
+                addToBOM,
+                removeFromBOM,
+                updateQuantity,
+                refresh,
+            }}
         >
             {children}
         </BOMContext.Provider>

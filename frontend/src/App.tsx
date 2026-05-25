@@ -3,11 +3,12 @@ import { PartSearch } from './components/PartSearch';
 import { ChatInterface } from './components/ChatInterface';
 import { SettingsPage } from './components/SettingsPage';
 import { BOMPage } from './components/BOMPage';
-import { Settings, Home, ShoppingCart } from 'lucide-react';
+import { Dashboard } from './components/Dashboard';
+import { Settings, Home, ShoppingCart, Layers } from 'lucide-react';
 import { useBOM } from './context/BOMContext';
 
 function MainLayout() {
-  const [activeTab, setActiveTab] = useState<'home' | 'bom' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'bom' | 'settings'>('home');
   const { items } = useBOM();
 
   return (
@@ -22,6 +23,13 @@ function MainLayout() {
               title="Home"
             >
               <Home className="h-6 w-6" />
+            </button>
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className={`p-2 rounded hover:bg-gray-100 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-gray-500'}`}
+              title="Design Board"
+            >
+              <Layers className="h-6 w-6" />
             </button>
             <button 
               onClick={() => setActiveTab('bom')}
@@ -57,6 +65,7 @@ function MainLayout() {
             </div>
           </div>
         )}
+        {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'bom' && <BOMPage />}
         {activeTab === 'settings' && <SettingsPage />}
       </main>

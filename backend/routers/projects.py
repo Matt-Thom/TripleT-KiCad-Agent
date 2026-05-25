@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from backend.db import get_session
-from backend.models.project import BomItem, Message, Project
+from backend.models.project import BomItem, Message, Project, BlockDiagram, SchematicIR
+from backend.models.schematic_ir import BlockDiagramData, SchematicIRData
+from backend.services.erc import erc_service, ErcViolation
 
 router = APIRouter(tags=["projects"])
 
@@ -52,6 +54,10 @@ class BomItemOut(BomItemIn):
     id: int
     project_id: int
     created_at: datetime
+
+
+class BomItemUpdate(BaseModel):
+    quantity: int = Field(default=1, ge=1)
 
 
 class MessageIn(BaseModel):
@@ -163,6 +169,25 @@ async def delete_bom_item(project_id: int, item_id: int) -> None:
         return None
 
 
+@router.put(
+    "/projects/{project_id}/bom/{item_id}",
+    response_model=BomItemOut,
+)
+async def update_bom_item_quantity(
+    project_id: int, item_id: int, payload: BomItemUpdate
+) -> BomItemOut:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        item = await session.get(BomItem, item_id)
+        if item is None or item.project_id != project_id:
+            raise HTTPException(status_code=404, detail="BOM item not found")
+        item.quantity = payload.quantity
+        session.add(item)
+        await session.commit()
+        await session.refresh(item)
+        return BomItemOut.model_validate(item)
+
+
 @router.get("/projects/{project_id}/messages", response_model=List[MessageOut])
 async def list_messages(project_id: int) -> List[MessageOut]:
     async with get_session() as session:
@@ -192,3 +217,118 @@ async def add_message(project_id: int, payload: MessageIn) -> MessageOut:
         await session.commit()
         await session.refresh(message)
         return MessageOut.model_validate(message)
+
+
+@router.get("/projects/{project_id}/block-diagram", response_model=BlockDiagramData)
+async def get_block_diagram(project_id: int) -> BlockDiagramData:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(BlockDiagram).where(BlockDiagram.project_id == project_id)
+        )
+        bd = result.scalars().first()
+        if bd is None:
+            return BlockDiagramData(blocks=[], connections=[])
+        return BlockDiagramData(blocks=bd.blocks, connections=bd.connections)
+
+
+@router.post("/projects/{project_id}/block-diagram", response_model=BlockDiagramData)
+async def save_block_diagram(project_id: int, payload: BlockDiagramData) -> BlockDiagramData:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(BlockDiagram).where(BlockDiagram.project_id == project_id)
+        )
+        bd = result.scalars().first()
+        blocks_dict = [b.model_dump() for b in payload.blocks]
+        connections_dict = [c.model_dump() for c in payload.connections]
+        if bd is None:
+            bd = BlockDiagram(
+                project_id=project_id,
+                blocks=blocks_dict,
+                connections=connections_dict,
+            )
+            session.add(bd)
+        else:
+            bd.blocks = blocks_dict
+            bd.connections = connections_dict
+            bd.updated_at = datetime.utcnow()
+            session.add(bd)
+        await session.commit()
+        return BlockDiagramData(blocks=bd.blocks, connections=bd.connections)
+
+
+@router.get("/projects/{project_id}/schematic-ir", response_model=SchematicIRData)
+async def get_schematic_ir(project_id: int) -> SchematicIRData:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(SchematicIR).where(SchematicIR.project_id == project_id)
+        )
+        sir = result.scalars().first()
+        if sir is None:
+            return SchematicIRData(components=[], nets=[])
+        return SchematicIRData(components=sir.components, nets=sir.nets)
+
+
+@router.post("/projects/{project_id}/schematic-ir", response_model=SchematicIRData)
+async def save_schematic_ir(project_id: int, payload: SchematicIRData) -> SchematicIRData:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(SchematicIR).where(SchematicIR.project_id == project_id)
+        )
+        sir = result.scalars().first()
+        components_dict = [c.model_dump() for c in payload.components]
+        nets_dict = [n.model_dump() for n in payload.nets]
+        if sir is None:
+            sir = SchematicIR(
+                project_id=project_id,
+                components=components_dict,
+                nets=nets_dict,
+            )
+            session.add(sir)
+        else:
+            sir.components = components_dict
+            sir.nets = nets_dict
+            sir.updated_at = datetime.utcnow()
+            session.add(sir)
+        await session.commit()
+        return SchematicIRData(components=sir.components, nets=sir.nets)
+
+
+@router.get("/projects/{project_id}/erc", response_model=List[ErcViolation])
+async def get_erc(project_id: int) -> List[ErcViolation]:
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(SchematicIR).where(SchematicIR.project_id == project_id)
+        )
+        sir = result.scalars().first()
+        if sir is None:
+            return []
+        ir_data = SchematicIRData(components=sir.components, nets=sir.nets)
+        return erc_service.check(ir_data)
+
+
+@router.post("/projects/{project_id}/schematic-ir/compile")
+async def compile_schematic_ir(project_id: int, filename: Optional[str] = None):
+    from backend.services.schematic import schematic_service
+    import os
+    async with get_session() as session:
+        await _get_project_or_404(session, project_id)
+        result = await session.execute(
+            select(SchematicIR).where(SchematicIR.project_id == project_id)
+        )
+        sir = result.scalars().first()
+        if sir is None or not sir.components:
+            raise HTTPException(status_code=400, detail="Cannot compile empty Schematic IR")
+        
+        ir_data = SchematicIRData(components=sir.components, nets=sir.nets)
+        try:
+            path = schematic_service.compile_ir_to_kicad_sch(ir_data, filename=filename)
+            fname = os.path.basename(path)
+            return {"download_url": f"/api/download/{fname}", "filename": fname}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Compilation error: {e}")
+

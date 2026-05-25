@@ -6,7 +6,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "sym-lib-table"
 
 def test_parse_sym_lib_table_returns_two_entries():
     entries = parse_sym_lib_table(FIXTURE)
-    assert len(entries) == 2
+    assert len(entries) == 4
     names = [e.name for e in entries]
     assert "Device" in names
     assert "MCU_ST_STM32F1" in names

@@ -76,3 +76,52 @@ def test_generated_schematic_escapes_newline_in_mpn(tmp_path):
 
     # Parens still balanced
     assert content.count("(") == content.count(")")
+
+
+def test_generate_multi_component_sch_places_and_routes(tmp_path):
+    service = SchematicService(output_dir=str(tmp_path))
+    components = [
+        {
+            "mpn": "AMS1117-3.3",
+            "reference": "U1",
+            "supplier_id": "C123",
+            "description": "3.3V LDO",
+            "connections": {
+                "3": "5V",
+                "2": "3V3",
+                "1": "GND"
+            }
+        },
+        {
+            "mpn": "C_10uF",
+            "reference": "C1",
+            "supplier_id": "C456",
+            "description": "Decoupling Cap",
+            "pins": [
+                {"number": "1", "name": "1", "type": "passive"},
+                {"number": "2", "name": "2", "type": "passive"}
+            ],
+            "connections": {
+                "1": "3V3",
+                "2": "GND"
+            }
+        }
+    ]
+    file_path = service.generate_multi_component_sch(components, filename="test_multi.kicad_sch")
+    assert os.path.exists(file_path)
+    content = open(file_path).read()
+    
+    # Verify the header keys exist
+    assert "(kicad_sch" in content
+    # Verify both component references exist
+    assert "U1" in content
+    assert "C1" in content
+    # Verify values exist
+    assert "AMS1117-3.3" in content
+    assert "C_10uF" in content
+    # Verify wires are present in the schematic
+    assert "(wire" in content
+    
+    # Verify balanced parens
+    assert content.count("(") == content.count(")")
+
