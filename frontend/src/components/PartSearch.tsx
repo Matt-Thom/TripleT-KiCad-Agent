@@ -1,13 +1,44 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Part } from '../types/Part';
-import { Search, Loader2 } from 'lucide-react';
+import type { Part } from '../types/Part';
+import { Search, Loader2, Check } from 'lucide-react';
+import { useBOM } from '../context/BOMContext';
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
 export const PartSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Part[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const { addToBOM, items } = useBOM();
+
+    const isPartInBOM = (mpn: string) => items.some(p => p.mpn === mpn);
+
+    const handleGenerateSchematic = async (mpn: string, supplierId: string) => {
+        try {
+            const response = await axios.post(
+                `${API_BASE}/api/generate/schematic`, 
+                null, 
+                {
+                    params: { mpn, supplier_id: supplierId },
+                    responseType: 'blob'
+                }
+            );
+            
+            // Create download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${mpn}.kicad_sch`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate schematic.');
+        }
+    };
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -18,7 +49,7 @@ export const PartSearch: React.FC = () => {
         setResults([]);
 
         try {
-            const response = await axios.get<Part[]>(`http://localhost:8000/api/search/lcsc`, {
+            const response = await axios.get<Part[]>(`${API_BASE}/api/search/lcsc`, {
                 params: { q: query }
             });
             setResults(response.data);
@@ -67,13 +98,27 @@ export const PartSearch: React.FC = () => {
                                 <p className="text-sm text-gray-600">{part.description}</p>
                                 <div className="text-xs text-gray-500 mt-1">
                                     Supplier: <span className="font-semibold">{part.supplier}</span> | 
-                                    Stock: <span className="font-semibold">{part.stock}</span>
+                                    Stock: <span className="font-semibold">{part.stock ?? 0}</span>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <div className="text-xl font-bold text-green-600">${part.price.toFixed(4)}</div>
-                                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded mt-1">
-                                    Add to BOM
+                            <div className="text-right flex flex-col gap-2">
+                                <div className="text-xl font-bold text-green-600">${(part.price ?? 0).toFixed(4)}</div>
+                                <button 
+                                    onClick={() => handleGenerateSchematic(part.mpn, part.supplier_part_number)}
+                                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200"
+                                >
+                                    Generate Schematic
+                                </button>
+                                <button 
+                                    onClick={() => addToBOM(part)}
+                                    disabled={isPartInBOM(part.mpn)}
+                                    className={`text-xs px-2 py-1 rounded flex items-center justify-center gap-1 ${
+                                        isPartInBOM(part.mpn) 
+                                        ? 'bg-green-100 text-green-800 cursor-default' 
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                                    }`}
+                                >
+                                    {isPartInBOM(part.mpn) ? <><Check className="h-3 w-3"/> Added</> : 'Add to BOM'}
                                 </button>
                             </div>
                         </div>

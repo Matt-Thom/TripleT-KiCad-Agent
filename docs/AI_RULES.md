@@ -15,7 +15,7 @@
 *   **Testing:** `pytest` is the standard. All new endpoints/logic must have accompanying tests.
 
 ### TypeScript (Frontend)
-*   **Framework:** React + Tailwind CSS.
+*   **Framework:** React + Tailwind CSS (v4).
 *   **Strict Mode:** Enabled. No `any` types unless absolutely unavoidable.
 *   **Components:** Functional components with Hooks.
 
@@ -30,6 +30,14 @@
     *   `dev`: Integration branch.
     *   `feature/*`: Individual feature branches.
 
+## Security & Safety
+*   **Secret Management:**
+    *   **NEVER** commit API keys, passwords, or tokens to version control.
+    *   All secrets must be stored in a `.env` file, which is strictly ignored by `.gitignore`.
+    *   Use `.env.example` to document required keys without including values.
+*   **Dependency Safety:** Verify all new Python/Node dependencies are reputable before adding them.
+*   **Code Execution:** The AI Agent is a "Co-Pilot". Any generated code (especially schematic generation) must be transparent and verifiable by the user.
+
 ## Architectural Patterns
 *   **RAG over Fine-tuning:** Use Retrieval-Augmented Generation for specialized knowledge.
     *   **The Cookbook:** All schematic generation logic must rely on verified snippets from `backend/knowledge/patterns/`.
@@ -41,3 +49,4 @@
 *   **No Hallucinations:** If a pattern does not exist, the Agent must either:
     1.  Search for a similar verified pattern.
     2.  Explicitly state it is generating a "Best Effort" design and request user verification.
+*   **Symbol Reuse:** Schematic generation prefers library symbols (looked up via `SymLibTable` at `KICAD_SYM_LIB_TABLE`) over procedural generation. Procedural generation is the fallback for misses only.

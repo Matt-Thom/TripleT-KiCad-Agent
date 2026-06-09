@@ -11,10 +11,15 @@ fp-info-cache
 *.bak
 _autosave-*
 *.kicad_sch
+generated_schematics/
 
 # IDEs
 .vscode/
 .idea/
+.antigravitycli/
+.obsidian/
+.claude/
+.jules/
 
 # OS
 .DS_Store
@@ -24,3 +29,6 @@ Thumbs.db
 node_modules/
 dist/
 build/
+
+# SQLite persistence
+data/
