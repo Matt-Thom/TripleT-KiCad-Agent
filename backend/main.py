@@ -9,7 +9,7 @@ from backend.routers import settings
 from backend.routers import projects as projects_router
 from backend.routers.projects import _ensure_default_project
 from backend.db import init_db, get_session
-from backend.models.project import Message
+from backend.models.project import Message, Project
 from typing import List
 import os
 import logging
@@ -51,6 +51,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    project_id: int | None = None
 
 # CORS Configuration
 origins = [
@@ -132,6 +133,15 @@ async def _default_project_id() -> int:
         return project.id
 
 
+async def _validated_project_id(project_id: int | None) -> int:
+    """Return project_id if it exists, otherwise the default project's id."""
+    if project_id is not None:
+        async with get_session() as session:
+            if await session.get(Project, project_id) is not None:
+                return project_id
+    return await _default_project_id()
+
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
@@ -140,19 +150,41 @@ async def chat(request: ChatRequest):
     # Convert Pydantic models to list of dicts for LiteLLM
     messages = [m.model_dump() for m in request.messages]
 
-    # We should add a System Prompt here to ground the AI in KiCad 9 context
+    # Ground the AI in KiCad 9 context and the full board-design workflow.
     system_prompt = {
         "role": "system",
         "content": (
             "You are the TripleT KiCad Agent, an expert in electronics design and KiCad 9. "
             "Help the user design circuits, select components, and understand electronics theory. "
             "Be concise, technical, and accurate. Always prioritize safety and best practices.\n\n"
+            "BOARD DESIGN WORKFLOW — when the user asks to design a circuit/board (not just a "
+            "single part), drive this sequence with tools, persisting state at each step:\n"
+            "1. ARCHITECT: Decompose the requirements into logical blocks and interconnects with "
+            "`update_block_diagram` (use `get_block_diagram` to read back the current plan).\n"
+            "2. SOURCE: Pick real parts for each block with `search_lcsc` (one component per call). "
+            "Note each part's `supplier_part_number`, `datasheet_url`, and Package attribute.\n"
+            "3. PINOUT: For each IC, call `extract_pinout` with the part's `datasheet_url` to get "
+            "real pins. Two-pin passives don't need this.\n"
+            "4. CONNECT: Build the netlist with `update_schematic_ir` — components (reference, mpn, "
+            "supplier_id, package, pins) and nets connecting specific pins. Include decoupling caps, "
+            "pull-ups, and other supporting passives. Set `package` so footprints get auto-assigned.\n"
+            "5. VERIFY: Run `run_erc` and fix every violation by updating the IR.\n"
+            "6. COMPILE: Call `compile_schematic_ir` to emit the KiCad project and give the user "
+            "the download links.\n"
+            "7. FABRICATE (optional): If the user wants native KiCad checks or fab outputs, call "
+            "`export_fabrication_outputs` with the compiled schematic filename.\n\n"
             "TOOL USAGE RULES:\n"
             "1. For sourcing a specific MPN or supplier search, call `search_lcsc`.\n"
-            "2. CRITICAL: For generating a schematic of ONE custom component, you MUST call `generate_schematic`. Do not describe the steps in text when the user asks to 'generate', 'create', 'make', or 'download'.\n"
+            "2. CRITICAL: For generating a schematic of ONE custom component, you MUST call "
+            "`generate_schematic`. Do not describe the steps in text when the user asks to "
+            "'generate', 'create', 'make', or 'download'. Pass `pins` from `extract_pinout` "
+            "whenever a datasheet URL is available.\n"
             "3. For any STANDARD sub-circuit (LDO, USB-C, I2C pull-ups, reset, decoupling), "
             "FIRST call `lookup_pattern` to see if a verified pattern exists, THEN call "
-            "`apply_pattern` with the id. Prefer verified patterns over custom generation."
+            "`apply_pattern` with the id. Prefer verified patterns over custom generation.\n"
+            "4. Schematics compiled from the IR assign KiCad footprints from each component's "
+            "package; tell the user that 'Update PCB from Schematic' in KiCad starts the board "
+            "layout, and that routing/DRC/Gerbers happen in KiCad."
         )
     }
 
@@ -160,11 +192,11 @@ async def chat(request: ChatRequest):
     if not any(m["role"] == "system" for m in messages):
         messages.insert(0, system_prompt)
 
-    response_text = await ai_service.get_response(messages)
+    response_text = await ai_service.get_response(messages, project_id=request.project_id)
 
-    # Persist the last user message and assistant reply to the default project.
+    # Persist the last user message and assistant reply to the active project.
     try:
-        project_id = await _default_project_id()
+        project_id = await _validated_project_id(request.project_id)
         last_user = next(
             (m for m in reversed(request.messages) if m.role == "user"), None
         )

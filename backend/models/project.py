@@ -7,7 +7,7 @@ working until multi-project support lands.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import Column
@@ -15,12 +15,17 @@ from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
 
+def utcnow() -> datetime:
+    """Naive UTC timestamp (SQLite-friendly, replaces deprecated datetime.utcnow)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class Project(SQLModel, table=True):
     __tablename__ = "project"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=utcnow, nullable=False)
 
 
 class BomItem(SQLModel, table=True):
@@ -40,7 +45,7 @@ class BomItem(SQLModel, table=True):
     attributes: dict = Field(default_factory=dict, sa_column=Column(JSON))
     quantity: int = 1
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=utcnow, nullable=False)
 
 
 class Message(SQLModel, table=True):
@@ -51,7 +56,7 @@ class Message(SQLModel, table=True):
 
     role: str
     content: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=utcnow, nullable=False)
 
 
 class BlockDiagram(SQLModel, table=True):
@@ -62,7 +67,7 @@ class BlockDiagram(SQLModel, table=True):
 
     blocks: list = Field(default_factory=list, sa_column=Column(JSON))
     connections: list = Field(default_factory=list, sa_column=Column(JSON))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=utcnow, nullable=False)
 
 
 class SchematicIR(SQLModel, table=True):
@@ -73,5 +78,5 @@ class SchematicIR(SQLModel, table=True):
 
     components: list = Field(default_factory=list, sa_column=Column(JSON))
     nets: list = Field(default_factory=list, sa_column=Column(JSON))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=utcnow, nullable=False)
 

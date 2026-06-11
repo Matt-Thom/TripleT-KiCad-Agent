@@ -7,7 +7,7 @@ import os
 from typing import Any
 
 from dotenv import load_dotenv
-from litellm import completion
+from litellm import acompletion
 
 from backend.services.tools import tools, execute_tool
 
@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class AIService:
-    DEFAULT_MAX_TOOL_TURNS = 6
+    # A full design pass (plan blocks, search N parts, extract N pinouts,
+    # build the IR, run ERC, compile) easily needs 15+ tool turns.
+    DEFAULT_MAX_TOOL_TURNS = 24
 
     def __init__(self, model: str = "gpt-4o", max_tool_turns: int | None = None) -> None:
         self.model = os.getenv("DEFAULT_AI_MODEL", model)
@@ -41,11 +43,15 @@ class AIService:
             )
             return cls.DEFAULT_MAX_TOOL_TURNS
 
-    async def get_response(self, messages: list[dict[str, Any]]) -> str:
+    async def get_response(
+        self,
+        messages: list[dict[str, Any]],
+        project_id: int | None = None,
+    ) -> str:
         messages = list(messages)  # Defensive copy — we mutate inside the loop.
         try:
             for turn in range(self.max_tool_turns + 1):
-                response = completion(
+                response = await acompletion(
                     model=self.model,
                     messages=messages,
                     tools=tools,
@@ -90,7 +96,7 @@ class AIService:
                     else:
                         logger.info("AI tool call: %s(%s)", fn_name, fn_args)
                         try:
-                            result = await execute_tool(fn_name, fn_args)
+                            result = await execute_tool(fn_name, fn_args, project_id=project_id)
                         except Exception as e:
                             logger.exception("Tool %s raised", fn_name)
                             result = f"Error executing {fn_name}: {e}"
