@@ -78,7 +78,7 @@ def test_generated_schematic_escapes_newline_in_mpn(tmp_path):
     assert content.count("(") == content.count(")")
 
 
-def test_generate_multi_component_sch_places_and_routes(tmp_path):
+def test_generate_multi_component_sch_places_and_connects(tmp_path):
     service = SchematicService(output_dir=str(tmp_path))
     components = [
         {
@@ -86,6 +86,7 @@ def test_generate_multi_component_sch_places_and_routes(tmp_path):
             "reference": "U1",
             "supplier_id": "C123",
             "description": "3.3V LDO",
+            "package": "SOT-223",
             "connections": {
                 "3": "5V",
                 "2": "3V3",
@@ -97,6 +98,7 @@ def test_generate_multi_component_sch_places_and_routes(tmp_path):
             "reference": "C1",
             "supplier_id": "C456",
             "description": "Decoupling Cap",
+            "package": "0603",
             "pins": [
                 {"number": "1", "name": "1", "type": "passive"},
                 {"number": "2", "name": "2", "type": "passive"}
@@ -110,7 +112,7 @@ def test_generate_multi_component_sch_places_and_routes(tmp_path):
     file_path = service.generate_multi_component_sch(components, filename="test_multi.kicad_sch")
     assert os.path.exists(file_path)
     content = open(file_path).read()
-    
+
     # Verify the header keys exist
     assert "(kicad_sch" in content
     # Verify both component references exist
@@ -119,9 +121,80 @@ def test_generate_multi_component_sch_places_and_routes(tmp_path):
     # Verify values exist
     assert "AMS1117-3.3" in content
     assert "C_10uF" in content
-    # Verify wires are present in the schematic
-    assert "(wire" in content
-    
+    # Nets are connected via labels attached at the pins
+    assert '(label "3V3"' in content
+    assert '(label "GND"' in content
+    assert '(label "5V"' in content
+    # Footprints are auto-assigned from the package
+    assert "Package_TO_SOT_SMD:SOT-223-3_TabPin2" in content
+    assert "Capacitor_SMD:C_0603_1608Metric" in content
+
     # Verify balanced parens
     assert content.count("(") == content.count(")")
+
+    # The generated symbol library persists next to the schematic so KiCad
+    # can re-resolve the lib_ids later.
+    assert (tmp_path / "test_multi_symbols.kicad_sym").exists()
+
+
+def test_compile_ir_to_project_emits_complete_project(tmp_path):
+    from backend.models.schematic_ir import SchematicIRData
+
+    service = SchematicService(output_dir=str(tmp_path))
+    ir = SchematicIRData(
+        components=[
+            {
+                "reference": "U1",
+                "mpn": "AMS1117-3.3",
+                "supplier_id": "C6186",
+                "package": "SOT-223",
+                "pins": [
+                    {"number": "1", "name": "GND", "type": "power_in"},
+                    {"number": "2", "name": "VOUT", "type": "power_out"},
+                    {"number": "3", "name": "VIN", "type": "power_in"},
+                ],
+            },
+            {
+                "reference": "C1",
+                "mpn": "10uF",
+                "supplier_id": "C19702",
+                "package": "0805",
+                "pins": [
+                    {"number": "1", "name": "P1", "type": "passive"},
+                    {"number": "2", "name": "P2", "type": "passive"},
+                ],
+            },
+        ],
+        nets=[
+            {"name": "3V3", "connections": [
+                {"component_ref": "U1", "pin_number": "2"},
+                {"component_ref": "C1", "pin_number": "1"},
+            ]},
+            {"name": "GND", "connections": [
+                {"component_ref": "U1", "pin_number": "1"},
+                {"component_ref": "C1", "pin_number": "2"},
+            ]},
+        ],
+    )
+
+    files = service.compile_ir_to_project(ir, project_name="my_board")
+
+    assert set(files) >= {"schematic", "project", "symbol_library", "sym_lib_table"}
+    for path in files.values():
+        assert os.path.exists(path), path
+
+    # The project file is valid JSON with the expected name
+    import json
+    pro = json.load(open(files["project"]))
+    assert pro["meta"]["filename"] == "my_board.kicad_pro"
+
+    # The schematic carries footprints and net labels
+    content = open(files["schematic"]).read()
+    assert "Package_TO_SOT_SMD:SOT-223-3_TabPin2" in content
+    assert "Capacitor_SMD:C_0805_2012Metric" in content
+    assert '(label "3V3"' in content
+
+    # The sym-lib-table points KiCad at the generated symbol library
+    table = open(files["sym_lib_table"]).read()
+    assert "my_board_symbols" in table
 
