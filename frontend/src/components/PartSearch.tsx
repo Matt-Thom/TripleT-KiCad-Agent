@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import type { Part } from '../types/Part';
-import { Search, Loader2, Check } from 'lucide-react';
+import { Search, Loader2, Check, FileText } from 'lucide-react';
 import { useBOM } from '../context/BOMContext';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
@@ -96,9 +96,29 @@ export const PartSearch: React.FC = () => {
                             <div>
                                 <h3 className="font-bold text-lg">{part.mpn}</h3>
                                 <p className="text-sm text-gray-600">{part.description}</p>
-                                <div className="text-xs text-gray-500 mt-1">
-                                    Supplier: <span className="font-semibold">{part.supplier}</span> | 
-                                    Stock: <span className="font-semibold">{part.stock ?? 0}</span>
+                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1 flex-wrap">
+                                    <span>Supplier: <span className="font-semibold">{part.supplier}</span></span>
+                                    <span>|</span>
+                                    <span>Stock: <span className="font-semibold">{part.stock ?? 0}</span></span>
+                                    {typeof part.attributes?.Package === 'string' && part.attributes.Package && (
+                                        <>
+                                            <span>|</span>
+                                            <span>Package: <span className="font-semibold">{part.attributes.Package}</span></span>
+                                        </>
+                                    )}
+                                    {part.datasheet_url && (
+                                        <>
+                                            <span>|</span>
+                                            <a
+                                                href={part.datasheet_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-blue-600 hover:underline inline-flex items-center gap-0.5"
+                                            >
+                                                <FileText className="h-3 w-3" /> Datasheet
+                                            </a>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             <div className="text-right flex flex-col gap-2">
