@@ -33,6 +33,10 @@ class ComponentInstance(BaseModel):
     mpn: str = Field(..., description="Manufacturer Part Number")
     supplier_id: str = Field(..., description="LCSC Part Number")
     value: str = Field("", description="Component value or variant name")
+    package: str = Field("", description="Physical package, e.g. '0603', 'SOT-23', 'LQFP-48'")
+    footprint: Optional[str] = Field(
+        None, description="KiCad footprint ID, e.g. 'Resistor_SMD:R_0603_1608Metric'"
+    )
     pins: List[PinSpec] = Field(default_factory=list)
     block_id: Optional[str] = Field(None, description="Logical block ID this component maps to")
     properties: Dict[str, str] = Field(default_factory=dict)

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from backend.db import get_session
-from backend.models.project import BomItem, Message, Project, BlockDiagram, SchematicIR
+from backend.models.project import BomItem, Message, Project, BlockDiagram, SchematicIR, utcnow
 from backend.models.schematic_ir import BlockDiagramData, SchematicIRData
 from backend.services.erc import erc_service, ErcViolation
 
@@ -252,7 +252,7 @@ async def save_block_diagram(project_id: int, payload: BlockDiagramData) -> Bloc
         else:
             bd.blocks = blocks_dict
             bd.connections = connections_dict
-            bd.updated_at = datetime.utcnow()
+            bd.updated_at = utcnow()
             session.add(bd)
         await session.commit()
         return BlockDiagramData(blocks=bd.blocks, connections=bd.connections)
@@ -291,7 +291,7 @@ async def save_schematic_ir(project_id: int, payload: SchematicIRData) -> Schema
         else:
             sir.components = components_dict
             sir.nets = nets_dict
-            sir.updated_at = datetime.utcnow()
+            sir.updated_at = utcnow()
             session.add(sir)
         await session.commit()
         return SchematicIRData(components=sir.components, nets=sir.nets)
@@ -316,19 +316,33 @@ async def compile_schematic_ir(project_id: int, filename: Optional[str] = None):
     from backend.services.schematic import schematic_service
     import os
     async with get_session() as session:
-        await _get_project_or_404(session, project_id)
+        project = await _get_project_or_404(session, project_id)
         result = await session.execute(
             select(SchematicIR).where(SchematicIR.project_id == project_id)
         )
         sir = result.scalars().first()
         if sir is None or not sir.components:
             raise HTTPException(status_code=400, detail="Cannot compile empty Schematic IR")
-        
+
         ir_data = SchematicIRData(components=sir.components, nets=sir.nets)
         try:
-            path = schematic_service.compile_ir_to_kicad_sch(ir_data, filename=filename)
-            fname = os.path.basename(path)
-            return {"download_url": f"/api/download/{fname}", "filename": fname}
+            files = schematic_service.compile_ir_to_project(
+                ir_data, project_name=filename or project.name
+            )
+            sch_name = os.path.basename(files["schematic"])
+            return {
+                # Kept for backward compatibility with older clients.
+                "download_url": f"/api/download/{sch_name}",
+                "filename": sch_name,
+                "files": [
+                    {
+                        "kind": kind,
+                        "filename": os.path.basename(path),
+                        "download_url": f"/api/download/{os.path.basename(path)}",
+                    }
+                    for kind, path in files.items()
+                ],
+            }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Compilation error: {e}")
 

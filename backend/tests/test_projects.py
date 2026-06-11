@@ -165,7 +165,7 @@ def test_bom_update_quantity(tmp_path, monkeypatch):
 
 
 def test_chat_persists_user_and_assistant_messages(tmp_path, monkeypatch):
-    async def fake_get_response(_messages):
+    async def fake_get_response(_messages, project_id=None):
         return "Hello from the assistant."
 
     from backend import main as main_mod

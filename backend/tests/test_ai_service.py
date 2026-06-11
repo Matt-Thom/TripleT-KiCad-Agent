@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.services.ai import AIService
 
@@ -31,19 +31,19 @@ def test_get_response_executes_chained_tool_calls():
     ]
     call_count = {"n": 0}
 
-    def fake_completion(**kwargs):
+    async def fake_completion(**kwargs):
         i = call_count["n"]
         call_count["n"] += 1
         return responses[i]
 
-    async def fake_execute_tool(name, args):
+    async def fake_execute_tool(name, args, project_id=None):
         if name == "search_lcsc":
             return '[{"mpn": "STM32F103", "supplier_part_number": "C8734"}]'
         if name == "generate_schematic":
             return "Schematic generated. [Download]"
         return "Error: unknown tool"
 
-    with patch("backend.services.ai.completion", side_effect=fake_completion):
+    with patch("backend.services.ai.acompletion", side_effect=fake_completion):
         with patch("backend.services.ai.execute_tool", side_effect=fake_execute_tool):
             result = asyncio.run(svc.get_response([{"role": "user", "content": "Make an STM32 sch"}]))
 
@@ -57,14 +57,14 @@ def test_get_response_respects_max_turns():
 
     call_count = {"n": 0}
 
-    def always_tool_call(**kwargs):
+    async def always_tool_call(**kwargs):
         call_count["n"] += 1
         return _make_completion(tool_calls=[_make_tool_call("c", "search_lcsc", '{"query": "X"}')])
 
-    async def fake_execute_tool(name, args):
+    async def fake_execute_tool(name, args, project_id=None):
         return "results..."
 
-    with patch("backend.services.ai.completion", side_effect=always_tool_call):
+    with patch("backend.services.ai.acompletion", side_effect=always_tool_call):
         with patch("backend.services.ai.execute_tool", side_effect=fake_execute_tool):
             result = asyncio.run(svc.get_response([{"role": "user", "content": "loop forever"}]))
 
@@ -84,7 +84,7 @@ def test_get_response_recovers_from_tool_error():
     ]
     call_count = {"n": 0}
 
-    def fake_completion(**kwargs):
+    async def fake_completion(**kwargs):
         i = call_count["n"]
         call_count["n"] += 1
         # Ensure the tool-result message contains the error text
@@ -93,10 +93,10 @@ def test_get_response_recovers_from_tool_error():
             assert tool_msgs and "boom" in tool_msgs[-1]["content"]
         return responses[i]
 
-    async def raising_tool(name, args):
+    async def raising_tool(name, args, project_id=None):
         raise RuntimeError("boom")
 
-    with patch("backend.services.ai.completion", side_effect=fake_completion):
+    with patch("backend.services.ai.acompletion", side_effect=fake_completion):
         with patch("backend.services.ai.execute_tool", side_effect=raising_tool):
             result = asyncio.run(svc.get_response([{"role": "user", "content": "try it"}]))
 
@@ -106,8 +106,8 @@ def test_get_response_recovers_from_tool_error():
 def test_get_response_no_tool_calls_returns_content():
     svc = AIService(model="test-model")
     with patch(
-        "backend.services.ai.completion",
-        return_value=_make_completion(content="pure text answer"),
+        "backend.services.ai.acompletion",
+        AsyncMock(return_value=_make_completion(content="pure text answer")),
     ):
         result = asyncio.run(svc.get_response([{"role": "user", "content": "hi"}]))
     assert result == "pure text answer"

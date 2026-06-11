@@ -14,7 +14,7 @@ interface Message {
 }
 
 export const ChatInterface: React.FC = () => {
-  const { items: bomItems } = useBOM();
+  const { items: bomItems, projectId } = useBOM();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -75,7 +75,8 @@ export const ChatInterface: React.FC = () => {
       }
 
       const response = await axios.post(`${API_BASE}/api/chat`, {
-        messages: apiMessages
+        messages: apiMessages,
+        project_id: projectId
       });
       console.log('Received response from backend:', response.data);
 

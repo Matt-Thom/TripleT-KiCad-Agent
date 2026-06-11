@@ -4,29 +4,7 @@
 The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridge the gap between high-level system requirements and physical PCB design.
 
 ## Status
-**Phase:** MVP Complete (Search, Chat, Basic Generation)
-
-## Next Phase: The "Schematic Drafter" (Real Symbols)
-
-### 1. Advanced Symbol Generation
-*   **Problem:** Currently, generated schematics use a placeholder "Box with Pin 1" because we lack pinout data.
-*   **Solution:** Implement a **Pinout Extraction** workflow.
-    *   **Data Source:** Use the AI (Gemini 3/GPT-5) to read the Datasheet URL (found via LCSC Search).
-    *   **Extraction:** The AI extracts the Pin Table (Pin Number, Name, Type) into a JSON format.
-    *   **Generation:** Update `SchematicService` to accept this JSON and draw a rectangle with the correct number of pins, names, and electrical types (Input, Output, Power).
-
-### 2. KiCad Library Integration
-*   **Goal:** Use the user's *actual* installed symbols if available.
-*   **Mechanism:**
-    *   Parse the user's `sym-lib-table` (path provided in Settings).
-    *   Search local libraries before generating a custom symbol.
-
-### 3. Multi-Part Schematics
-*   **Goal:** "Connect an STM32 to a Sensor."
-*   **Mechanism:**
-    *   Generate symbols for both parts.
-    *   Place them on the sheet (algorithmic layout).
-    *   Draw wires between matching nets (e.g., SDA -> SDA, SCL -> SCL).
+**Phase:** Circuit Designer complete (planner → netlist IR → ERC → KiCad project with footprints). Next: PCB layout automation.
 
 ## Current Roadmap
 
@@ -55,7 +33,7 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
     *   `GET/POST /api/projects/{id}/messages`
 *   [x] Default project auto-created on first call, preserving the single-page UX.
 *   [x] Frontend `BOMContext` now fetches and mutates through `/api/projects/{id}/bom`; a browser refresh keeps the BOM.
-*   [x] `/api/chat` persists both the last user message and the assistant reply on the default project.
+*   [x] `/api/chat` persists both the last user message and the assistant reply (per-project via optional `project_id`).
 
 ### Phase 3: The "Symbol Engineer" [COMPLETED]
 *   [x] **Datasheet Reading:** `backend/services/datasheet.py` fetches PDFs via `httpx` and extracts text with `pdfplumber`.
@@ -63,7 +41,20 @@ The TripleT KiCad Agent is an AI-powered engineering assistant designed to bridg
 *   [x] **Procedural Symbol Generator:** Python code to draw complex symbols from Pin Lists.
 *   [x] **Library Reuse:** Schematic generator prefers existing symbols from the user's `sym-lib-table`; falls back to the procedural generator only when no library hit is found.
 *   [x] **Chain to generate_schematic:** `generate_schematic` accepts an optional `pins` array so the agent can wire `search_lcsc` → `extract_pinout` → `generate_schematic(..., pins=...)`.
+*   [x] **Datasheet URLs from search:** LCSC search requests full rows (`full=true`) and maps the `datasheet` column, so the agent can chain search → extract_pinout without asking the user for a URL.
 
-### Phase 4: The "Circuit Designer" (Future)
-*   [ ] Algorithmic placement of components.
-*   [ ] Automatic wiring of standard interfaces (I2C, SPI, UART).
+### Phase 4: The "Circuit Designer" [COMPLETED]
+*   [x] **System Architecture Planner:** `update_block_diagram` / `get_block_diagram` tools + `BlockDiagram` persistence; the Design Board dashboard renders blocks and interconnects.
+*   [x] **Schematic/Netlist IR:** `update_schematic_ir` / `get_schematic_ir` tools + `SchematicIR` persistence (components, pins, nets, packages, footprints).
+*   [x] **Local ERC:** `run_erc` checks floating inputs, missing drivers, power conflicts, missing decoupling, and missing I2C pull-ups over the IR.
+*   [x] **Net-label connectivity:** compiled schematics attach a net label at every connected pin (scales to any net size; replaces point-to-point wires).
+*   [x] **Footprint assignment:** `backend/services/footprints.py` maps LCSC package strings (0603, SOT-23, SOIC-8, LQFP-48, …) to stock KiCad footprint IDs; explicit `footprint` overrides supported in the IR.
+*   [x] **Complete project emission:** `compile_schematic_ir` emits `.kicad_sch` + `.kicad_pro` + generated `.kicad_sym` + project-local `sym-lib-table`, so "Update PCB from Schematic" works directly in KiCad.
+*   [x] **Workflow prompt:** the chat system prompt drives architect → source → pinout → connect → verify → compile → fabricate.
+
+### Phase 5: The "PCB Engineer" (Future)
+*   [x] **kicad-cli wrapper:** native ERC, netlist/BOM/PDF export, and Gerber/drill export for routed boards (`backend/services/fabrication.py`, `export_fabrication_outputs` tool). Requires KiCad installed server-side; degrades gracefully when absent.
+*   [ ] **.kicad_pcb generation:** emit a board file with footprints placed and nets assigned (requires footprint geometry — KiCad footprint libraries server-side or an EasyEDA→KiCad converter for LCSC parts).
+*   [ ] **Algorithmic placement:** seed component placement from the block diagram (power entry, MCU-centric clustering, decoupling proximity).
+*   [ ] **Autorouting integration:** e.g. freerouting round-trip, or interactive-routing handoff to KiCad.
+*   [ ] **Fab package:** one-click JLCPCB bundle (Gerbers, drill, BOM CSV, CPL) once a routed board exists.

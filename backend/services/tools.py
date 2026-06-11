@@ -2,13 +2,14 @@ import json
 import os
 
 from backend.services.datasheet import DatasheetError
+from backend.services import fabrication
 from backend.services.lcsc import lcsc_service
 from backend.services.pinout import PinoutExtractionError, extract_pinout
 from backend.services.procedural_symbol import VALID_PIN_TYPES, PinSpec
 from backend.services.schematic import schematic_service
 from backend.db import get_session
 from sqlmodel import select
-from backend.models.project import Project, BlockDiagram, SchematicIR
+from backend.models.project import Project, BlockDiagram, SchematicIR, utcnow
 from backend.models.schematic_ir import BlockDiagramData, SchematicIRData
 from backend.services.erc import erc_service
 
@@ -147,7 +148,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "generate_multi_component_schematic",
-            "description": "Generate a KiCad 9 schematic containing multiple components placed side-by-side with orthogonal/Manhattan wire routing between matching nets.",
+            "description": "Generate a KiCad 9 schematic containing multiple components placed on a grid, with matching nets connected via net labels. Prefer the update_schematic_ir + compile_schematic_ir flow for full designs; use this for quick one-off multi-part sheets.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -172,6 +173,14 @@ tools = [
                                 "description": {
                                     "type": "string",
                                     "description": "Optional component description."
+                                },
+                                "package": {
+                                    "type": "string",
+                                    "description": "Physical package (e.g. '0603', 'SOT-23'); used to auto-assign a KiCad footprint."
+                                },
+                                "footprint": {
+                                    "type": "string",
+                                    "description": "Explicit KiCad footprint ID; overrides package-based auto-assignment."
                                 },
                                 "pins": {
                                     "type": "array",
@@ -272,6 +281,14 @@ tools = [
                                 "mpn": {"type": "string"},
                                 "supplier_id": {"type": "string"},
                                 "value": {"type": "string"},
+                                "package": {
+                                    "type": "string",
+                                    "description": "Physical package from the part search (e.g. '0603', 'SOT-23', 'LQFP-48'). Used to auto-assign a KiCad footprint."
+                                },
+                                "footprint": {
+                                    "type": "string",
+                                    "description": "Explicit KiCad footprint ID (e.g. 'Resistor_SMD:R_0603_1608Metric'). Overrides the package-based auto-assignment."
+                                },
                                 "pins": {
                                     "type": "array",
                                     "items": {
@@ -332,12 +349,39 @@ tools = [
         "type": "function",
         "function": {
             "name": "compile_schematic_ir",
-            "description": "Compiles the active project's Netlist IR into a native KiCad 9 (.kicad_sch) file.",
+            "description": (
+                "Compiles the active project's Netlist IR into a complete KiCad 9 project: "
+                "a .kicad_sch schematic with net labels and footprints assigned, a .kicad_pro "
+                "project file, and (when needed) a generated symbol library. The user can open "
+                "the project in KiCad and run 'Update PCB from Schematic' directly."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "filename": {"type": "string", "description": "Optional custom output schematic filename."}
+                    "filename": {"type": "string", "description": "Optional custom project/schematic name."}
                 }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "export_fabrication_outputs",
+            "description": (
+                "Run KiCad's native toolchain (kicad-cli) on a compiled schematic: KiCad's own "
+                "ERC report, netlist, BOM CSV, and printable PDF. If a routed .kicad_pcb with the "
+                "same name exists, also exports Gerber and drill files. Requires KiCad 9 to be "
+                "installed on the server; reports a clear message if it is not."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "description": "Schematic filename previously returned by compile_schematic_ir (e.g. 'Default.kicad_sch')."
+                    }
+                },
+                "required": ["filename"]
             }
         }
     }
@@ -366,9 +410,12 @@ def _coerce_pins(raw: object) -> list[PinSpec] | None:
     return pins or None
 
 
-async def execute_tool(name: str, args: dict):
+async def execute_tool(name: str, args: dict, project_id: int | None = None):
     """
     Executes a tool by name with the provided arguments.
+
+    Stateful tools (block diagram, schematic IR, ERC, compile) operate on
+    `project_id` when given, otherwise on the default project.
     """
     if name == "search_lcsc":
         # Returns a list of Part objects, we need to serialize them to text/json for the AI
@@ -445,7 +492,7 @@ async def execute_tool(name: str, args: dict):
         )
 
     elif name == "get_block_diagram":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         async with get_session() as session:
             result = await session.execute(
                 select(BlockDiagram).where(BlockDiagram.project_id == pid)
@@ -456,7 +503,7 @@ async def execute_tool(name: str, args: dict):
             return json.dumps({"blocks": bd.blocks, "connections": bd.connections})
 
     elif name == "update_block_diagram":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         blocks = args.get("blocks", [])
         connections = args.get("connections", [])
         async with get_session() as session:
@@ -470,14 +517,13 @@ async def execute_tool(name: str, args: dict):
             else:
                 bd.blocks = blocks
                 bd.connections = connections
-                from datetime import datetime
-                bd.updated_at = datetime.utcnow()
+                bd.updated_at = utcnow()
                 session.add(bd)
             await session.commit()
         return "Block diagram updated successfully."
 
     elif name == "get_schematic_ir":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         async with get_session() as session:
             result = await session.execute(
                 select(SchematicIR).where(SchematicIR.project_id == pid)
@@ -488,7 +534,7 @@ async def execute_tool(name: str, args: dict):
             return json.dumps({"components": sir.components, "nets": sir.nets})
 
     elif name == "update_schematic_ir":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         components = args.get("components", [])
         nets = args.get("nets", [])
         async with get_session() as session:
@@ -504,14 +550,13 @@ async def execute_tool(name: str, args: dict):
                     sir.components = components
                 if nets:
                     sir.nets = nets
-                from datetime import datetime
-                sir.updated_at = datetime.utcnow()
+                sir.updated_at = utcnow()
                 session.add(sir)
             await session.commit()
         return "Schematic IR updated successfully."
 
     elif name == "run_erc":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         async with get_session() as session:
             result = await session.execute(
                 select(SchematicIR).where(SchematicIR.project_id == pid)
@@ -526,7 +571,7 @@ async def execute_tool(name: str, args: dict):
             return json.dumps([v.model_dump() for v in violations])
 
     elif name == "compile_schematic_ir":
-        pid = await _get_default_project_id()
+        pid = await _resolve_project_id(project_id)
         async with get_session() as session:
             result = await session.execute(
                 select(SchematicIR).where(SchematicIR.project_id == pid)
@@ -535,15 +580,81 @@ async def execute_tool(name: str, args: dict):
             if sir is None or not sir.components:
                 return "Error: Cannot compile empty Schematic IR."
             ir_data = SchematicIRData(components=sir.components, nets=sir.nets)
+            project_name = args.get("filename") or await _project_name(pid)
             try:
-                path = schematic_service.compile_ir_to_kicad_sch(ir_data, filename=args.get("filename"))
-                filename = os.path.basename(path)
-                download_url = f"/api/download/{filename}"
-                return f"Schematic successfully compiled from IR. [Download Schematic]({download_url})"
+                files = schematic_service.compile_ir_to_project(
+                    ir_data, project_name=project_name
+                )
             except Exception as e:
                 return f"Error compiling Schematic IR: {e}"
+            links = " | ".join(
+                f"[{kind.replace('_', ' ')}](/api/download/{os.path.basename(path)})"
+                for kind, path in files.items()
+            )
+            return (
+                "Compiled the Netlist IR into a KiCad 9 project. "
+                f"Downloads: {links}. Open the .kicad_pro in KiCad and use "
+                "'Update PCB from Schematic' to start board layout."
+            )
+
+    elif name == "export_fabrication_outputs":
+        filename = os.path.basename(str(args.get("filename", "")))
+        if not filename.endswith(".kicad_sch"):
+            filename += ".kicad_sch"
+        sch_path = os.path.join(schematic_service.output_dir, filename)
+        if not os.path.exists(sch_path):
+            return f"Error: {filename} not found. Run compile_schematic_ir first."
+
+        parts: list[str] = []
+        outputs: list[str] = []
+        erc_res = fabrication.run_native_erc(sch_path)
+        if not erc_res.ok:
+            return erc_res.message
+        parts.append(f"KiCad ERC report:\n{erc_res.message[:2000]}")
+        outputs += erc_res.outputs
+
+        art_res = fabrication.export_schematic_artifacts(sch_path)
+        parts.append(art_res.message)
+        outputs += art_res.outputs
+
+        pcb_path = sch_path[: -len(".kicad_sch")] + ".kicad_pcb"
+        if os.path.exists(pcb_path):
+            gerber_res = fabrication.export_pcb_gerbers(pcb_path)
+            parts.append(gerber_res.message)
+            outputs += gerber_res.outputs
+        else:
+            parts.append(
+                "No routed .kicad_pcb found yet — Gerber export becomes available "
+                "after the board is laid out in KiCad."
+            )
+
+        links = " | ".join(
+            f"[{os.path.basename(p)}](/api/download/{os.path.basename(p)})"
+            for p in outputs
+            if os.path.dirname(os.path.abspath(p))
+            == os.path.abspath(schematic_service.output_dir)
+        )
+        if links:
+            parts.append(f"Downloads: {links}")
+        return "\n\n".join(parts)
 
     return "Error: Tool not found."
+
+
+async def _resolve_project_id(project_id: int | None) -> int:
+    """Validate the supplied project id, or fall back to the default project."""
+    if project_id is not None:
+        async with get_session() as session:
+            project = await session.get(Project, project_id)
+            if project is not None:
+                return project_id
+    return await _get_default_project_id()
+
+
+async def _project_name(project_id: int) -> str:
+    async with get_session() as session:
+        project = await session.get(Project, project_id)
+        return project.name if project else "triplet_project"
 
 
 async def _get_default_project_id() -> int:

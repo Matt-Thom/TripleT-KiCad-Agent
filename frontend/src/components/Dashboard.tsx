@@ -64,6 +64,18 @@ interface ErcViolation {
   elements: string[];
 }
 
+interface CompiledFile {
+  kind: string;
+  filename: string;
+  download_url: string;
+}
+
+interface CompileResult {
+  download_url: string;
+  filename: string;
+  files?: CompiledFile[];
+}
+
 export const Dashboard: React.FC = () => {
   const { projectId } = useBOM();
   const [activeSubTab, setActiveSubTab] = useState<'blocks' | 'netlist'>('blocks');
@@ -74,7 +86,7 @@ export const Dashboard: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [compiling, setCompiling] = useState(false);
-  const [compileResult, setCompileResult] = useState<{ download_url: string; filename: string } | null>(null);
+  const [compileResult, setCompileResult] = useState<CompileResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -182,16 +194,30 @@ export const Dashboard: React.FC = () => {
       )}
 
       {compileResult && (
-        <div className="mb-6 p-4 rounded-md border border-green-200 bg-green-50 flex items-center justify-between text-green-900">
-          <div>
-            <span className="font-bold">Success!</span> Compiled schematic file <code className="font-mono text-sm bg-green-100 px-1 py-0.5 rounded">{compileResult.filename}</code>.
+        <div className="mb-6 p-4 rounded-md border border-green-200 bg-green-50 text-green-900">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <span className="font-bold">Success!</span> Compiled KiCad project <code className="font-mono text-sm bg-green-100 px-1 py-0.5 rounded">{compileResult.filename}</code>.
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {(compileResult.files && compileResult.files.length > 0
+                ? compileResult.files
+                : [{ kind: 'schematic', filename: compileResult.filename, download_url: compileResult.download_url }]
+              ).map((file) => (
+                <a
+                  key={file.download_url}
+                  href={`${API_BASE}${file.download_url}`}
+                  className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 flex items-center gap-2 text-sm font-semibold capitalize"
+                  title={file.filename}
+                >
+                  <Download className="h-4 w-4" /> {file.kind.replace(/_/g, ' ')}
+                </a>
+              ))}
+            </div>
           </div>
-          <a
-            href={`${API_BASE}${compileResult.download_url}`}
-            className="bg-green-600 text-white px-4 py-1.5 rounded hover:bg-green-700 flex items-center gap-2 text-sm font-semibold"
-          >
-            <Download className="h-4 w-4" /> Download Schematic
-          </a>
+          <p className="text-xs text-green-700 mt-2">
+            Open the project in KiCad 9 and run "Update PCB from Schematic" to start board layout — footprints are pre-assigned where the package was recognized.
+          </p>
         </div>
       )}
 
